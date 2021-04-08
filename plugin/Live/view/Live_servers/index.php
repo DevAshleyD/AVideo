@@ -12,7 +12,7 @@ if (!User::isAdmin()) {
 <!DOCTYPE html>
 <html lang="<?php echo $_SESSION['language']; ?>">
     <head>
-        <title><?php echo $config->getWebSiteTitle(); ?>  :: Live</title>
+        <title><?php echo __("Live") . $config->getPageTitleSeparator() . $config->getWebSiteTitle(); ?></title>
         <?php
         include $global['systemRootPath'] . 'view/include/head.php';
         include $global['systemRootPath'] . 'plugin/Live/View/{$classname}/index_head.php';
@@ -24,6 +24,6 @@ if (!User::isAdmin()) {
         include $global['systemRootPath'] . 'plugin/Live/View/{$classname}/index_body.php';
         include $global['systemRootPath'] . 'view/include/footer.php';
         ?>
-        <script type="text/javascript" src="<?php echo $global['webSiteRootURL']; ?>view/css/DataTables/datatables.min.js"></script>
+        <script type="text/javascript" src="<?php echo getCDN(); ?>view/css/DataTables/datatables.min.js"></script>
     </body>
 </html>

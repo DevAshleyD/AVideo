@@ -6,7 +6,7 @@ require_once dirname(__FILE__) . '/../../../objects/user.php';
 
 class LiveTransmition extends ObjectYPT {
 
-    protected $id, $title, $public, $saveTransmition, $users_id, $categories_id, $key, $description;
+    protected $id, $title, $public, $saveTransmition, $users_id, $categories_id, $key, $description, $showOnTV;
 
     static function getSearchFieldsNames() {
         return array('title');
@@ -152,6 +152,7 @@ class LiveTransmition extends ObjectYPT {
 
     static function getFromDbByUserName($userName) {
         global $global;
+        _mysql_connect();
         $userName = $global['mysqli']->real_escape_string($userName);
         $sql = "SELECT * FROM users WHERE user = ? LIMIT 1";
         $res = sqlDAL::readSql($sql, "s", array($userName), true);
@@ -159,6 +160,9 @@ class LiveTransmition extends ObjectYPT {
         sqlDAL::close($res);
         if ($res != false) {
             $user = $data;
+            if(empty($user)){
+                return false;
+            }
             return static::getFromDbByUser($user['id']);
         } else {
             return false;
@@ -170,6 +174,12 @@ class LiveTransmition extends ObjectYPT {
         if (!is_string($key)) {
             return false;
         }
+        if(Live::isAdaptiveTransmition($key)){
+            return false;
+        }
+        $key = Live::cleanUpKey($key);
+        
+        
         $key = preg_replace("/[^A-Za-z0-9]/", '', $key);
         $sql = "SELECT u.*, lt.* FROM " . static::getTableName() . " lt "
                 . " LEFT JOIN users u ON u.id = users_id AND u.status='a' WHERE  `key` = '$key' LIMIT 1";
@@ -178,16 +188,23 @@ class LiveTransmition extends ObjectYPT {
         sqlDAL::close($res);
         if ($res) {
             $row = $data;
+            $row = cleanUpRowFromDatabase($row);
         } else {
             $row = false;
         }
         return $row;
-    }
+    }    
 
     function save() {
         $this->public = intval($this->public);
         $this->saveTransmition = intval($this->saveTransmition);
+        $this->showOnTV = intval($this->showOnTV);
         $id = parent::save();
+        Category::clearCacheCount();
+        Live::deleteStatsCache(true);
+        
+        $socketObj = sendSocketMessageToAll(array('stats'=>getStatsNotifications()), "socketLiveONCallback");
+        
         return $id;
     }
 
@@ -205,7 +222,11 @@ class LiveTransmition extends ObjectYPT {
         $sql = "INSERT INTO live_transmitions_has_users_groups (live_transmitions_id, users_groups_id) VALUES (?,?)";
         return sqlDAL::writeSql($sql, "ii", array($this->id, $users_groups_id));
     }
-
+    
+    function isAPrivateLive(){
+        return !empty($this->getGroups());
+    }
+    
     function getGroups() {
         $rows = array();
         if (empty($this->id)) {
@@ -272,5 +293,28 @@ class LiveTransmition extends ObjectYPT {
         }
         return $user;
     }
+    
+    static function keyNameFix($key){
+        $key = str_replace('/', '', $key);
+        if(!empty($_REQUEST['live_index']) && !preg_match("/.*-([0-9a-zA-Z]+)/", $key)){
+            if(!empty($_REQUEST['live_index']) && $_REQUEST['live_index']!=='false'){
+                $key .= "-{$_REQUEST['live_index']}";
+            }
+        }
+        if(!empty($_REQUEST['playlists_id_live']) && !preg_match("/.*_([0-9]+)/", $key)){
+            $key .= "_{$_REQUEST['playlists_id_live']}";
+        }
+        return $key;
+    }
+    
+    function getShowOnTV() {
+        return $this->showOnTV;
+    }
+
+    function setShowOnTV($showOnTV) {
+        $this->showOnTV = $showOnTV;
+    }
+
+
 
 }

@@ -7,7 +7,14 @@ use Pecee\SimpleRouter\SimpleRouter; //required if we want to define routes on o
 
 
 class TopMenu extends PluginAbstract {
+    const PERMISSION_CAN_EDIT = 0;
 
+
+    public function getTags() {
+        return array(
+            PluginTags::$FREE,
+        );
+    }
     public function getDescription() {
         $txt = "Responsive Customized Top Menu";
         $help = "<br><small><a href='https://github.com/WWBN/AVideo/wiki/How-to-use-TopMenu-Plug-in' target='__blank'><i class='fas fa-question-circle'></i> Help</a></small>";
@@ -50,7 +57,7 @@ class TopMenu extends PluginAbstract {
 
     public function getHeadCode() {
         global $global;
-        $css = '<link href="' . $global['webSiteRootURL'] . 'plugin/TopMenu/style.css" rel="stylesheet" type="text/css"/>';
+        $css = '<link href="' .getCDN() . 'plugin/TopMenu/style.css" rel="stylesheet" type="text/css"/>';
         return $css;
     }
     
@@ -80,7 +87,13 @@ class TopMenu extends PluginAbstract {
         return $menuId['id'];
     }
     
-    public function getTags() {
-        return array('free');
+    function getPermissionsOptions(){
+        $permissions = array();
+        $permissions[] = new PluginPermissionOption(TopMenu::PERMISSION_CAN_EDIT, __("TopMenu"), __("Can edit TopMenu plugin"), 'TopMenu');
+        return $permissions;
+    }
+    
+    static function canAdminTopMenu(){
+        return Permissions::hasPermission(TopMenu::PERMISSION_CAN_EDIT,'TopMenu');
     }
 }

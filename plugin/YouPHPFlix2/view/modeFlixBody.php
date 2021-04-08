@@ -1,27 +1,34 @@
 <?php
 include $global['systemRootPath'] . 'plugin/YouPHPFlix2/view/BigVideo.php';
+$percent = 90;
 ?>
-<div id="carouselRows" style="background-color: rgb(<?php echo $obj->backgroundRGB; ?>);">
-    <?php
-    $_REQUEST['current'] = 1;
-    $_REQUEST['rowCount'] = $obj->maxVideos;
+<div id="carouselRows" style="
+     background-color: rgb(<?php echo $obj->backgroundRGB; ?>);
+     background: -webkit-linear-gradient(bottom, rgba(<?php echo $obj->backgroundRGB; ?>,1) <?php echo $percent; ?>%, rgba(<?php echo $obj->backgroundRGB; ?>,0) 100%);
+     background: -o-linear-gradient(top, rgba(<?php echo $obj->backgroundRGB; ?>,1) <?php echo $percent; ?>%, rgba(<?php echo $obj->backgroundRGB; ?>,0) 100%);
+     background: linear-gradient(top, rgba(<?php echo $obj->backgroundRGB; ?>,1) <?php echo $percent; ?>%, rgba(<?php echo $obj->backgroundRGB; ?>,0) 100%);
+     background: -moz-linear-gradient(to top, rgba(<?php echo $obj->backgroundRGB; ?>,1) <?php echo $percent; ?>%, rgba(<?php echo $obj->backgroundRGB; ?>,0) 100%);
+     ">
+         <?php
+         $_REQUEST['current'] = 1;
+         $_REQUEST['rowCount'] = $obj->maxVideos;
 
-    TimeLogEnd($timeLog, __LINE__);
-    if ($obj->Suggested) {
-        $dataFlickirty = new stdClass();
-        $dataFlickirty->wrapAround = true;
-        $dataFlickirty->pageDots = !empty($obj->pageDots);
-        $dataFlickirty->lazyLoad = 15;
-        $dataFlickirty->setGallerySize = false;
-        $dataFlickirty->cellAlign = 'left';
-        if ($obj->SuggestedAutoPlay) {
-            $dataFlickirty->autoPlay = true;
-        }
+         if ($obj->Suggested) {
+             $dataFlickirty = new stdClass();
+             $dataFlickirty->wrapAround = true;
+             $dataFlickirty->pageDots = !empty($obj->pageDots);
+             $dataFlickirty->lazyLoad = 15;
+             $dataFlickirty->setGallerySize = false;
+             $dataFlickirty->cellAlign = 'left';
+             $dataFlickirty->groupCells = true;
+             if ($obj->SuggestedAutoPlay) {
+                 $dataFlickirty->autoPlay = 10000;
+             }
 
-        //getAllVideos($status = "viewable", $showOnlyLoggedUserVideos = false, $ignoreGroup = false, $videosArrayId = array(), $getStatistcs = false, $showUnlisted = false, $activeUsersOnly = true, $suggestedOnly = false)
-        $videos = Video::getAllVideos("viewableNotUnlisted", false, true, array(), false, false, true, true);
-        if (!empty($videos)) {
-            ?>
+             //getAllVideos($status = "viewable", $showOnlyLoggedUserVideos = false, $ignoreGroup = false, $videosArrayId = array(), $getStatistcs = false, $showUnlisted = false, $activeUsersOnly = true, $suggestedOnly = false)
+             $videos = Video::getAllVideos("viewableNotUnlisted", false, true, array(), false, false, true, true);
+             if (!empty($videos)) {
+                 ?>
             <div class="row topicRow">
                 <h2>
                     <i class="glyphicon glyphicon-sort-by-attributes"></i> <?php
@@ -37,7 +44,102 @@ include $global['systemRootPath'] . 'plugin/YouPHPFlix2/view/BigVideo.php';
             <?php
         }
     }
-    TimeLogEnd($timeLog, __LINE__);
+
+    if ($obj->Channels) {
+        require_once $global['systemRootPath'] . 'objects/Channel.php';
+        $dataFlickirty = new stdClass();
+        $dataFlickirty->wrapAround = true;
+        $dataFlickirty->pageDots = !empty($obj->pageDots);
+        $dataFlickirty->lazyLoad = 15;
+        $dataFlickirty->setGallerySize = false;
+        $dataFlickirty->cellAlign = 'left';
+        $dataFlickirty->groupCells = true;
+        if ($obj->ChannelsAutoPlay) {
+            $dataFlickirty->autoPlay = 10000;
+        }
+        $users_id_array = VideoStatistic::getUsersIDFromChannelsWithMoreViews();
+        $channels = Channel::getChannels(true, "u.id, '" . implode(",", $users_id_array) . "'");
+        if (!empty($channels)) {
+            foreach ($channels as $channel) {
+                $_POST['sort']['created'] = "DESC";
+                $videos = Video::getAllVideosAsync("viewable", $channel['id']);
+                unset($_POST['sort']['created']);
+                $link = User::getChannelLinkFromChannelName($channel["channelName"]);
+                ?>
+                <div class="row topicRow">
+                    <h2>
+                        <a href="<?php echo $link; ?>">
+                            <img src="<?php echo $global['webSiteRootURL'] . $channel["photoURL"]; ?>" class="img img-responsive pull-left" style="max-width: 18px; max-height: 18px; margin-right: 5px;"> <?php
+                            echo $channel["channelName"];
+                            ?>
+                        </a>
+                    </h2>
+                    <!-- Date Programs/Playlists -->
+                    <?php
+                    include $global['systemRootPath'] . 'plugin/YouPHPFlix2/view/row.php';
+                    ?>
+                </div>
+
+                <?php
+            }
+        }
+    }
+
+
+    $plObj = AVideoPlugin::getDataObjectIfEnabled('PlayLists');
+    if ($obj->PlayList && !empty($plObj)) {
+        $dataFlickirty = new stdClass();
+        $dataFlickirty->wrapAround = true;
+        $dataFlickirty->pageDots = !empty($obj->pageDots);
+        $dataFlickirty->lazyLoad = 15;
+        $dataFlickirty->setGallerySize = false;
+        $dataFlickirty->cellAlign = 'left';
+        $dataFlickirty->groupCells = true;
+        if ($obj->PlayListAutoPlay) {
+            $dataFlickirty->autoPlay = 10000;
+        }
+
+        $programs = Video::getAllVideos("viewableNotUnlisted", false, true, array(), false, false, true, false, true);
+        cleanSearchVar();
+        if (!empty($programs)) {
+            foreach ($programs as $serie) {
+                $videos = PlayList::getAllFromPlaylistsID($serie['serie_playlists_id']);
+
+                foreach ($videos as $key => $value) {
+                    $videos[$key]['title'] = "{$value['icon']} {$value['title']}";
+                }
+
+                $link = PlayLists::getLink($serie['serie_playlists_id']);
+                $linkEmbed = PlayLists::getLink($serie['serie_playlists_id'], true);
+                $canWatchPlayButton = "";
+                if (User::canWatchVideoWithAds($value['id'])) {
+                    $canWatchPlayButton = "canWatchPlayButton";
+                }
+                ?>
+                <div class="row topicRow">
+                    <h2>
+                        <a href="<?php echo $link; ?>" embed="<?php echo $linkEmbed; ?>" class="<?php echo $canWatchPlayButton; ?>">
+                            <i class="fas fa-list"></i> <?php
+                            echo $serie['title'];
+                            ?>
+                        </a>
+                    </h2>
+                    <!-- Date Programs/Playlists -->
+                    <?php
+                    $rowPlayListLink = PlayLists::getLink($serie['serie_playlists_id']);
+                    $rowPlayListLinkEmbed = PlayLists::getLink($serie['serie_playlists_id'], true);
+                    include $global['systemRootPath'] . 'plugin/YouPHPFlix2/view/row.php';
+                    unset($rowPlayListLink);
+                    unset($rowPlayListLinkEmbed);
+                    ?>
+                </div>
+
+                <?php
+            }
+        }
+        reloadSearchVar();
+    }
+
     if ($obj->Trending) {
         $dataFlickirty = new stdClass();
         $dataFlickirty->wrapAround = true;
@@ -45,8 +147,9 @@ include $global['systemRootPath'] . 'plugin/YouPHPFlix2/view/BigVideo.php';
         $dataFlickirty->lazyLoad = 15;
         $dataFlickirty->setGallerySize = false;
         $dataFlickirty->cellAlign = 'left';
+        $dataFlickirty->groupCells = true;
         if ($obj->TrendingAutoPlay) {
-            $dataFlickirty->autoPlay = true;
+            $dataFlickirty->autoPlay = 10000;
         }
 
         $_POST['sort']['trending'] = "";
@@ -70,7 +173,6 @@ include $global['systemRootPath'] . 'plugin/YouPHPFlix2/view/BigVideo.php';
             <?php
         }
     }
-    TimeLogEnd($timeLog, __LINE__);
     if ($obj->DateAdded) {
         $dataFlickirty = new stdClass();
         $dataFlickirty->wrapAround = true;
@@ -78,8 +180,9 @@ include $global['systemRootPath'] . 'plugin/YouPHPFlix2/view/BigVideo.php';
         $dataFlickirty->lazyLoad = 15;
         $dataFlickirty->setGallerySize = false;
         $dataFlickirty->cellAlign = 'left';
+        $dataFlickirty->groupCells = true;
         if ($obj->DateAddedAutoPlay) {
-            $dataFlickirty->autoPlay = true;
+            $dataFlickirty->autoPlay = 10000;
         }
 
         unset($_POST['sort']);
@@ -103,7 +206,6 @@ include $global['systemRootPath'] . 'plugin/YouPHPFlix2/view/BigVideo.php';
             <?php
         }
     }
-    TimeLogEnd($timeLog, __LINE__);
     if ($obj->MostPopular) {
         $_REQUEST['rowCount'] = $obj->maxVideos;
         $dataFlickirty = new stdClass();
@@ -112,8 +214,9 @@ include $global['systemRootPath'] . 'plugin/YouPHPFlix2/view/BigVideo.php';
         $dataFlickirty->lazyLoad = 15;
         $dataFlickirty->setGallerySize = false;
         $dataFlickirty->cellAlign = 'left';
+        $dataFlickirty->groupCells = true;
         if ($obj->MostPopularAutoPlay) {
-            $dataFlickirty->autoPlay = true;
+            $dataFlickirty->autoPlay = 10000;
             $dataFlickirty->wrapAround = true;
         } else {
             $dataFlickirty->wrapAround = true;
@@ -137,7 +240,6 @@ include $global['systemRootPath'] . 'plugin/YouPHPFlix2/view/BigVideo.php';
 
         <?php
     }
-    TimeLogEnd($timeLog, __LINE__);
     if ($obj->MostWatched) {
         $_REQUEST['rowCount'] = $obj->maxVideos;
         $dataFlickirty = new stdClass();
@@ -146,8 +248,9 @@ include $global['systemRootPath'] . 'plugin/YouPHPFlix2/view/BigVideo.php';
         $dataFlickirty->lazyLoad = 15;
         $dataFlickirty->setGallerySize = false;
         $dataFlickirty->cellAlign = 'left';
+        $dataFlickirty->groupCells = true;
         if ($obj->MostWatchedAutoPlay) {
-            $dataFlickirty->autoPlay = true;
+            $dataFlickirty->autoPlay = 10000;
             $dataFlickirty->wrapAround = true;
         } else {
             $dataFlickirty->wrapAround = true;
@@ -169,7 +272,6 @@ include $global['systemRootPath'] . 'plugin/YouPHPFlix2/view/BigVideo.php';
         </div>
         <?php
     }
-    TimeLogEnd($timeLog, __LINE__);
     if ($obj->SortByName) {
         $_REQUEST['rowCount'] = $obj->maxVideos;
         $dataFlickirty = new stdClass();
@@ -178,8 +280,9 @@ include $global['systemRootPath'] . 'plugin/YouPHPFlix2/view/BigVideo.php';
         $dataFlickirty->lazyLoad = 15;
         $dataFlickirty->setGallerySize = false;
         $dataFlickirty->cellAlign = 'left';
+        $dataFlickirty->groupCells = true;
         if ($obj->SortByNameAutoPlay) {
-            $dataFlickirty->autoPlay = true;
+            $dataFlickirty->autoPlay = 10000;
             $dataFlickirty->wrapAround = true;
         } else {
             $dataFlickirty->wrapAround = true;
@@ -201,145 +304,65 @@ include $global['systemRootPath'] . 'plugin/YouPHPFlix2/view/BigVideo.php';
         </div>
         <?php
     }
-    TimeLogEnd($timeLog, __LINE__);
     if ($obj->Categories) {
-        $dataFlickirty = new stdClass();
-        $dataFlickirty->wrapAround = true;
-        $dataFlickirty->pageDots = !empty($obj->pageDots);
-        $dataFlickirty->lazyLoad = true;
-        $dataFlickirty->fade = true;
-        $dataFlickirty->setGallerySize = false;
-        $dataFlickirty->cellAlign = 'left';
-        if ($obj->CategoriesAutoPlay) {
-            $dataFlickirty->autoPlay = true;
-            $dataFlickirty->wrapAround = true;
-        } else {
-            $dataFlickirty->wrapAround = true;
-        }
+        $url = "{$global['webSiteRootURL']}plugin/YouPHPFlix2/view/modeFlixCategory.php";
         if (!empty($_GET['catName'])) {
-            unset($_POST['sort']);
-            $_POST['sort']['v.created'] = "DESC";
-            $_POST['sort']['likes'] = "DESC";
-            $_REQUEST['current'] = 1;
-            $_REQUEST['rowCount'] = $obj->maxVideos;
-
-            TimeLogStart("modeFlix.php::getAllVideos");
-            $videos = Video::getAllVideos("viewableNotUnlisted", false, true);
-            TimeLogEnd("modeFlix.php::getAllVideos", __LINE__);
-            TimeLogStart("modeFlix.php::getCategoryByName");
-            $category = Category::getCategoryByName($_GET['catName']);
-            TimeLogEnd("modeFlix.php::getCategoryByName", __LINE__);
-            ?>
-            <div class="row topicRow">
-                <span class="md-col-12">&nbsp;</span>
-                <h2>
-                    <a href="<?php echo $global['webSiteRootURL']; ?>cat/<?php echo $_GET['catName']; ?>"><i class="<?php echo $category['iconClass']; ?>"></i> <?php echo $category['name']; ?></a>
-                </h2>
-                <!-- Sub category -->
-                <?php
-                include $global['systemRootPath'] . 'plugin/YouPHPFlix2/view/row.php';
-                ?>
-            </div>
-            <?php
-            TimeLogStart("modeFlix.php::while(1)");
-            while (1) {
-                $_REQUEST['current']++;
-                $videos = Video::getAllVideos("viewableNotUnlisted", false, true);
-                if (empty($videos)) {
-                    break;
-                }
-                echo '<div class="row topicRow">';
-                include $global['systemRootPath'] . 'plugin/YouPHPFlix2/view/row.php';
-                echo '</div>';
-            }
-            TimeLogEnd("modeFlix.php::while(1)", __LINE__);
-            ?>
-            <?php
-            TimeLogStart("modeFlix.php::getChildCategoriesFromTitle");
-            unset($_POST['sort']);
-            $categoriesC = Category::getChildCategoriesFromTitle($_GET['catName']);
-            foreach ($categoriesC as $value) {
-                unset($_POST['sort']);
-                $_GET['catName'] = $value['clean_name'];
-                $_POST['sort']['v.created'] = "DESC";
-                $_POST['sort']['likes'] = "DESC";
-                $videos = Video::getAllVideos("viewableNotUnlisted", false, true);
-                if (empty($videos)) {
-                    continue;
-                }
-                ?>
-                <div class="row topicRow">
-                    <span class="md-col-12">&nbsp;</span>
-                    <h2>
-                        <a href="<?php echo $global['webSiteRootURL']; ?>cat/<?php echo $value['clean_name']; ?>"><i class="fas fa-folder"></i> <?php echo $value['name']; ?></a>
-                    </h2>
-                    <!-- Sub category -->
-                    <?php
-                    include $global['systemRootPath'] . 'plugin/YouPHPFlix2/view/row.php';
-                    ?>
-                </div>
-                <?php
-                unset($_GET['catName']);
-            }
-            TimeLogEnd("modeFlix.php::getChildCategoriesFromTitle", __LINE__);
-        } else {
-            ?>
-            <div id="categoriesContainer">
-            </div>
-            <p class="pagination">
-                <a class="pagination__next" href="<?php echo $global['webSiteRootURL']; ?>plugin/YouPHPFlix2/view/modeFlixCategory.php?current=1&rrating=<?php echo @$_GET['rrating']; ?>&search=<?php echo @$_GET['search']; ?>"></a>
-            </p>
-            <div class="scroller-status">
-                <div class="infinite-scroll-request loader-ellips text-center">
-                    <i class="fas fa-spinner fa-pulse text-muted"></i>
-                </div>
-            </div>
-            <script>
-                $(document).ready(function () {
-                    $container = $('#categoriesContainer').infiniteScroll({
-                        path: '.pagination__next',
-                        append: '.categoriesContainerItem',
-                        status: '.scroller-status',
-                        hideNav: '.pagination',
-                        history: false,
-                        checkLastPage: true
-                    });
-                    $container.on('request.infiniteScroll', function (event, path) {
-                        //console.log('Loading page: ' + path);
-                    });
-                    $container.on('append.infiniteScroll', function (event, response, path, items) {
-                        var id = "#" + items[0].id;
-                        startModeFlix(id + " ");
-
-                        $(id + " img.thumbsJPG").each(function (index) {
-                            $(this).attr('src', $(this).attr('data-flickity-lazyload'));
-                            $(this).addClass('flickity-lazyloaded');
-                        });
-
-                    });
-                    $container.infiniteScroll('loadNextPage');
-                    setTimeout(function () {
-                        $container.infiniteScroll('loadNextPage');
-                    }, 1000);
-                });
-
-            </script>
-            <?php
+            $url = addQueryStringParameter($url, 'catName', $_GET['catName']);
         }
+        $search = getSearchVar();
+        if (!empty($search)) {
+            $url = addQueryStringParameter($url, 'search', $search);
+        }
+        $url = addQueryStringParameter($url, 'tags_id', intval(@$_GET['tags_id']));
+        $url = addQueryStringParameter($url, 'current', 1);
         ?>
+        <div id="categoriesContainer"></div>
+        <p class="pagination infiniteScrollPagination">
+            <a class="pagination__next" href="<?php echo $url; ?>"></a>
+        </p>
+        <div class="scroller-status">
+            <div class="infinite-scroll-request loader-ellips text-center">
+                <i class="fas fa-spinner fa-pulse text-muted"></i>
+            </div>
+        </div>
+        <script src="<?php echo getCDN(); ?>view/js/infinite-scroll.pkgd.min.js" type="text/javascript"></script>
         <script>
             $(document).ready(function () {
-                setTimeout(function () {
-                    $("img.thumbsJPG").each(function (index) {
+                $container = $('#categoriesContainer').infiniteScroll({
+                    path: '.pagination__next',
+                    append: '.categoriesContainerItem',
+                    status: '.scroller-status',
+                    hideNav: '.infiniteScrollPagination',
+                    prefill: true,
+                    history: false
+                });
+                $container.on('request.infiniteScroll', function (event, path) {
+                    //console.log('Loading page: ' + path);
+                });
+                $container.on('append.infiniteScroll', function (event, response, path, items) {
+                    //console.log('Append page: ' + path);
+
+                    $("img.thumbsJPG").not('flickity-lazyloaded').each(function (index) {
                         $(this).attr('src', $(this).attr('data-flickity-lazyload'));
                         $(this).addClass('flickity-lazyloaded');
                     });
+
+                    lazyImage();
+                    if (typeof transformLinksToEmbed === 'function') {
+                        transformLinksToEmbed('a.galleryLink');
+                        transformLinksToEmbed('a.canWatchPlayButton');
+                    }
+                });
+                setTimeout(function () {
+                    lazyImage();
+                    if (typeof transformLinksToEmbed === 'function') {
+                        transformLinksToEmbed('a.galleryLink');
+                    }
                 }, 500);
             });
-        </script>    
+        </script>
         <?php
     }
-    TimeLogEnd($timeLog, __LINE__);
     unset($_POST['sort']);
     unset($_REQUEST['current']);
     unset($_REQUEST['rowCount']);

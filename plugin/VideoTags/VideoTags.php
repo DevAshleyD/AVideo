@@ -8,6 +8,11 @@ require_once $global['systemRootPath'] . 'plugin/VideoTags/Objects/TagsTypes.php
 
 class VideoTags extends PluginAbstract {
 
+    public function getTags() {
+        return array(
+            PluginTags::$FREE,
+        );
+    }
     public function getDescription() {
         $txt = "User interface for managing tags";
         $help = "";
@@ -238,10 +243,13 @@ $(\'#inputTags' . $tagTypesId . '\').tagsinput({
     
     public static function getManagerVideosJavaScripts(){
         global $global;
-        return "<script src=\"{$global['webSiteRootURL']}plugin/VideoTags/bootstrap-tagsinput/bootstrap-tagsinput.min.js\" type=\"text/javascript\"></script><script src=\"{$global['webSiteRootURL']}plugin/VideoTags/bootstrap-tagsinput/typeahead.bundle.js\" type=\"text/javascript\"></script>";
+        return "<script src=\"".getCDN()."plugin/VideoTags/bootstrap-tagsinput/bootstrap-tagsinput.min.js\" type=\"text/javascript\"></script><script src=\"".getCDN()."plugin/VideoTags/bootstrap-tagsinput/typeahead.bundle.js\" type=\"text/javascript\"></script>";
     }
     
     public static function saveVideosAddNew($post, $videos_id){
+        if(empty($post['videoTags'])){
+            return false;
+        }
         return self::saveTags($post['videoTags'], $videos_id);
     }
     

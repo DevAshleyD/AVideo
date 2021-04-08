@@ -42,7 +42,6 @@ if (empty($obj->meet_schedule_id) && !empty($_REQUEST['starts'])) {
 }
 $obj->roomName = Meet::createRoomName(@$_REQUEST['RoomTopic']);
 
-
 if (empty($_REQUEST['starts'])) {
     $_REQUEST['starts'] = date("Y-m-d H:i:s");
 }
@@ -51,7 +50,7 @@ if (empty($_REQUEST['status'])) {
     $_REQUEST['status'] = 'a';
 }
 if (!isset($_REQUEST['public'])) {
-    $_REQUEST['public'] = 1;
+    $_REQUEST['public'] = 2;
 }
 if (!isset($_REQUEST['live_stream'])) {
     $_REQUEST['live_stream'] = 0;
@@ -75,9 +74,17 @@ $meet_schedule_id = $o->save();
 if ($meet_schedule_id) {
     Meet_schedule_has_users_groups::saveUsergroupsToMeet($meet_schedule_id, $_REQUEST['userGroups']);
 }
-
+$obj->meet_schedule_id = $meet_schedule_id;
 $obj->password = @$_REQUEST['RoomPasswordNew'];
 $obj->error = empty($meet_schedule_id);
+
+if($obj->error){
+    // check if the user install the tables
+    if(!Meet_schedule::isTableInstalled()){
+        $obj->msg = "You need to install the tables for this plugin";
+    }
+}
+
 $obj->link = Meet::getMeetLink($meet_schedule_id);
 $obj->shortLink = Meet::getMeetShortLink($meet_schedule_id);
 $obj->jwt = Meet::getToken($meet_schedule_id);
@@ -86,6 +93,6 @@ $obj->joinURL = Meet::getJoinURL();
 $obj->roomID = Meet::getRoomID($meet_schedule_id);
 $obj->invitation = Meet::getInvitation($meet_schedule_id);
 //var_dump($obj->domain);
-        
+
 die(json_encode($obj));
 ?>

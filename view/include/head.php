@@ -3,6 +3,9 @@ require_once $global['systemRootPath'] . 'plugin/AVideoPlugin.php';
 $head = AVideoPlugin::getHeadCode();
 $custom = "The Best YouTube Clone Ever - AVideo";
 $extraPluginFile = $global['systemRootPath'] . 'plugin/Customize/Objects/ExtraConfig.php';
+if(empty($advancedCustom)){
+    $advancedCustom = AVideoPlugin::getObjectData("CustomizeAdvanced");
+}
 
 $custom = array();
 
@@ -39,40 +42,55 @@ if(!empty($metaDescription)){
     $metaDescription = implode(" - ", $custom);
 }
 // for SEO to not rise an error of duplicated title or description of same pages with and without last slash
-$metaDescription .= getSEOComplement();
-$theme = $config->getTheme();
+$metaDescription .= getSEOComplement(array("addAutoPrefix" => false));
+$theme = getCurrentTheme();
+
+if(empty($config)){
+    $config = new Configuration();
+}
+
 ?>
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="<?php echo $metaDescription; ?>">
+<meta name="device_id" content="<?php echo getDeviceID(); ?>">
+<meta name="keywords" content="<?php echo str_replace('"', "", strip_tags($advancedCustom->keywords)); ?>">
 
 <link rel="apple-touch-icon" sizes="180x180" href="<?php echo $config->getFavicon(true); ?>">
 <link rel="icon" type="image/png" href="<?php echo $config->getFavicon(true); ?>">
 <link rel="shortcut icon" href="<?php echo $config->getFavicon(); ?>" sizes="16x16,24x24,32x32,48x48,144x144">
 <meta name="msapplication-TileImage" content="<?php echo $config->getFavicon(true); ?>">
-
+<!--
+<meta name="newCache" content="<?php echo ObjectYPT::checkSessionCacheBasedOnLastDeleteALLCacheTime()?"yes":"No" ?>">
+<meta name="sessionCache" content="<?php echo humanTimingAgo(@$_SESSION['user']['sessionCache']['time']), " " ,@$_SESSION['user']['sessionCache']['time']; ?>">
+<meta name="systemCache" content="<?php echo humanTimingAgo(ObjectYPT::getLastDeleteALLCacheTime()), " " ,ObjectYPT::getLastDeleteALLCacheTime(); ?>">
+<meta name="sessionCache-systemCache" content="<?php $dif = @$_SESSION['user']['sessionCache']['time']-ObjectYPT::getLastDeleteALLCacheTime();
+echo $dif, " Seconds "; ?>">
+-->
 <!-- <link rel="stylesheet" type="text/css" media="only screen and (max-device-width: 768px)" href="view/css/mobile.css" /> -->
-<link href="<?php echo $global['webSiteRootURL']; ?>view/js/jquery-ui/jquery-ui.min.css" rel="stylesheet" type="text/css"/>
-<link href="<?php echo $global['webSiteRootURL']; ?>view/bootstrap/css/bootstrap.min.css" rel="stylesheet" type="text/css"/>
-<link href="<?php echo $global['webSiteRootURL']; ?>view/js/webui-popover/jquery.webui-popover.min.css" rel="stylesheet" type="text/css"/>
-<link href="<?php echo $global['webSiteRootURL']; ?>view/css/fontawesome-free-5.5.0-web/css/all.min.css" rel="stylesheet" type="text/css"/>
-<link href="<?php echo $global['webSiteRootURL']; ?>view/css/flagstrap/css/flags.css" rel="stylesheet" type="text/css"/>
+<link href="<?php echo getCDN(); ?>view/js/jquery-ui/jquery-ui.min.css" rel="stylesheet" type="text/css"/>
+<link href="<?php echo getCDN(); ?>view/bootstrap/css/bootstrap.min.css" rel="stylesheet" type="text/css"/>
+<link href="<?php echo getCDN(); ?>view/js/webui-popover/jquery.webui-popover.min.css" rel="stylesheet" type="text/css"/>
+<link href="<?php echo getCDN(); ?>view/css/fontawesome-free-5.5.0-web/css/all.min.css" rel="stylesheet" type="text/css"/>
+<link href="<?php echo getCDN(); ?>view/css/font-awesome-animation.min.css" rel="stylesheet" type="text/css"/>
+<link href="<?php echo getCDN(); ?>view/css/flagstrap/css/flags.css" rel="stylesheet" type="text/css"/>
 <?php
 $cssFiles = array();
 //$cssFiles[] = "view/js/seetalert/sweetalert.css";
 $cssFiles[] = "view/bootstrap/bootstrapSelectPicker/css/bootstrap-select.min.css";
 $cssFiles[] = "view/js/bootgrid/jquery.bootgrid.css";
 $cssFiles[] = "view/js/jquery-toast/jquery.toast.min.css";
-$cssFiles[] = "view/css/custom/{$theme}.css";
+//$cssFiles[] = "view/css/custom/{$theme}.css";
 $cssFiles = array_merge($cssFiles);
 $cssURL = combineFiles($cssFiles, "css");
 ?>
 <link href="<?php echo $cssURL; ?>" rel="stylesheet" type="text/css"/>
+<link href="<?php echo getCDN(); ?>view/css/custom/<?php echo $theme; ?>.css" rel="stylesheet" type="text/css" id="customCSS"/>
 <?php
-$filename = "{$global['systemRootPath']}videos/cache/custom.css";
+$filename = Video::getStoragePath()."cache/custom.css";
 if($theme === "default" && !empty($customizePlugin->showCustomCSS) && file_exists($filename)){
-    echo '<link href="'.$global['webSiteRootURL'].'videos/cache/custom.css?'.  filectime($filename) .'" rel="stylesheet" type="text/css" id="pluginCustomCss" />';
+    echo '<link href="'.getCDN().'videos/cache/custom.css?'.  filectime($filename) .'" rel="stylesheet" type="text/css" id="pluginCustomCss" />';
 }else{
     if($theme !== "default"){
         echo "<!-- theme is not default -->";
@@ -119,7 +137,7 @@ if (isRTL()) {
     <?php
 }
 ?>
-<script src="<?php echo $global['webSiteRootURL']; ?>view/js/jquery-3.5.1.min.js"></script>
+<script src="<?php echo getCDN(); ?>view/js/jquery-3.5.1.min.js"></script>
 <script>
     var webSiteRootURL = '<?php echo $global['webSiteRootURL']; ?>';
     var player;

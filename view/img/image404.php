@@ -8,22 +8,27 @@ session_write_close();
 $file = 'video-placeholder-gray.png';
 $type = 'image/png';
 
+$imageURL = $_SERVER["REQUEST_URI"];
+if(!empty($_GET['image'])){
+    $imageURL = $_GET['image'];
+}
 // if the thumb is not ready yet, try to find the default image
-if(preg_match('/videos\/(.*)_thumbs.jpg$/', $_SERVER["REQUEST_URI"], $matches)){
-    $jpg = "{$global['systemRootPath']}videos/{$matches[1]}.jpg";
+if(preg_match('/videos\/(.*)_thumbs(V2)?.jpg/',$imageURL, $matches)){
+    $jpg = Video::getStoragePath()."{$matches[1]}.jpg";
     if(file_exists($jpg)){
         $file = $jpg;
         $type = 'image/jpg';
         header("HTTP/1.0 404 Not Found");
         header('Content-Type:' . $type);
         header('Content-Length: ' . filesize($file));
+        _error_log("Image not found for {$imageURL} we are using {$jpg} instead ");
         readfile($file);
         exit;
     }
 }
 
 if(empty($_GET['notFound'])){
-    header("Location: {$global['webSiteRootURL']}view/img/image404.php?notFound=1");
+    header("Location: ".getCDN()."view/img/image404.php?notFound=1");
     exit;
 }
 

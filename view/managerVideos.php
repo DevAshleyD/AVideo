@@ -24,7 +24,7 @@ if(!empty($_GET['iframe'])){
 <!DOCTYPE html>
 <html lang="<?php echo $_SESSION['language']; ?>">
     <head>
-        <title><?php echo $config->getWebSiteTitle(); ?> :: <?php echo __("Videos"); ?></title>
+        <title><?php echo __("Audios and Videos") . $config->getPageTitleSeparator() . $config->getWebSiteTitle(); ?></title>
         <?php
         include $global['systemRootPath'] . 'view/include/head.php';
         include $global['systemRootPath'] . 'view/managerVideos_head.php';
@@ -37,7 +37,7 @@ if(!empty($_GET['iframe'])){
         include $global['systemRootPath'] . 'view/managerVideos_body.php';
         include $global['systemRootPath'] . 'view/include/footer.php';
         ?>
-        <script src="<?php echo $global['webSiteRootURL']; ?>view/js/bootstrap-datetimepicker/js/bootstrap-datetimepicker.min.js" type="text/javascript"></script>
+        <script src="<?php echo getCDN(); ?>view/js/bootstrap-datetimepicker/js/bootstrap-datetimepicker.min.js" type="text/javascript"></script>
 
     </body>
 </html>

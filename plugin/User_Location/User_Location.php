@@ -5,6 +5,11 @@ require_once $global['systemRootPath'] . 'plugin/User_Location/Objects/IP2Locati
 
 class User_Location extends PluginAbstract {
 
+    public function getTags() {
+        return array(
+            PluginTags::$FREE,
+        );
+    }
     public function getDescription() {
         global $global, $mysqlDatabase;
         $ret = "Detects user location for various purposes";
@@ -41,8 +46,8 @@ class User_Location extends PluginAbstract {
     static function getSessionLocation(){
         $ip = getRealIpAddr();
         if(!empty($_SESSION['User_Location'][$ip]['country_name'])){
-            if ($_SESSION['IP2Location'][$ip]['country_name'] == "United States of America") {
-                $_SESSION['IP2Location'][$ip]['country_name'] = "United States";
+            if ($_SESSION['User_Location'][$ip]['country_name'] == "United States of America") {
+                $_SESSION['User_Location'][$ip]['country_name'] = "United States";
             }
             return $_SESSION['User_Location'][$ip];
         }

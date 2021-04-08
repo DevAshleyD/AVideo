@@ -10,12 +10,12 @@ $obj = new stdClass();
 $obj->error = true;
 $obj->msg = "";
 
-if (!User::isAdmin()) {
+if (!Permissions::canClearCache()) {
     $obj->msg = __("Permission denied");
     die(json_encode($obj));
 }
 _session_start();
-$_SESSION['getAllCategoriesClearCache'] = 1;
+$_SESSION['user']['sessionCache']['getAllCategoriesClearCache'] = 1;
 clearCache();
 ObjectYPT::deleteALLCache();
 $obj->error = false;

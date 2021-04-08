@@ -1,7 +1,14 @@
 <?php
 global $global, $config;
 if (!isset($global['systemRootPath'])) {
-    require_once '../videos/configuration.php';
+    $configFile = '../videos/configuration.php';
+    if(file_exists($configFile)){
+        require_once $configFile;
+    }else{
+        header($_SERVER['SERVER_PROTOCOL'] . ' 500 Internal Server Error', true, 500);
+        include '../view/maintanance.html';
+        exit;
+    }
 }
 header("HTTP/1.0 404 Not Found");
 ?>
@@ -489,7 +496,7 @@ header("HTTP/1.0 404 Not Found");
             </div>
 
             <div id="main-content">
-                <center><img src="<?php echo $global['webSiteRootURL']; ?>videos/userPhoto/logo.png?1570636830"> </center>
+                <center><img src="<?php echo getCDN(); ?>videos/userPhoto/logo.png?1570636830"> </center>
                 <h1>We couldn't find what you were looking for.</h1>
 
                 <p>Unfortunately the page you were looking for could not be found. It may be

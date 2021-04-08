@@ -6,42 +6,11 @@ if (!isset($global['systemRootPath'])) {
     }
 }
 
-//$forceMeetDomain = "meet.wwbn.com";
+require_once $global['systemRootPath'].'plugin/Meet/validateMeet.php';
 
-$objM = AVideoPlugin::getObjectDataIfEnabled("Meet");
-//_error_log(json_encode($_SERVER));
-if (empty($objM)) {
-    die("Plugin disabled");
-}
-
-$meet_schedule_id = intval($_GET['meet_schedule_id']);
-
-if (empty($meet_schedule_id)) {
-    die("meet schedule id cannot be empty");
-}
-
-$meet = new Meet_schedule($meet_schedule_id);
-if(empty($meet->getName())){
-    die("meet not found");
-}
-
-$userCredentials = User::loginFromRequestToGet();
-
-$meetDomain = Meet::getDomain();
-if (empty($meetDomain)) {
-    header("Location: {$global['webSiteRootURL']}plugin/Meet/?error=The Server is Not ready");
-    exit;
-}
-
-$canJoin = Meet::canJoinMeetWithReason($meet_schedule_id);
-if (!$canJoin->canJoin) {
-    header("Location: {$global['webSiteRootURL']}plugin/Meet/?error=" . urlencode($canJoin->reason));
-    exit;
-}
-
-if (empty($meet->getPublic()) && !User::isLogged()) {
-    header("Location: {$global['webSiteRootURL']}user?redirectUri=" . urlencode($meet->getMeetLink()) . "&msg=" . urlencode(__("Please, login before join a meeting")));
-    exit;
+if (!Meet::validatePassword($meet_schedule_id, @$_POST['meet_password'])) {
+   header("Location: {$global['webSiteRootURL']}plugin/Meet/confirmMeetPassword.php?meet_schedule_id=$meet_schedule_id");
+   exit;
 }
 
 $objLive = AVideoPlugin::getObjectData("Live");
@@ -52,7 +21,7 @@ $readyToClose = User::getChannelLink($meet->getUsers_id())."?{$userCredentials}"
 if (Meet::isModerator($meet_schedule_id)) {
     $readyToClose = "{$global['webSiteRootURL']}plugin/Meet/?{$userCredentials}";
     if ($meet->getPassword()) {
-        $apiExecute[] = "api.executeCommand('password', '" . $meet->getPassword() . "');";
+        //$apiExecute[] = "api.executeCommand('password', '" . $meet->getPassword() . "');";
     }
     if ($meet->getLive_stream()) {
         $apiExecute[] = "api.executeCommand('startRecording', {
@@ -63,6 +32,12 @@ if (Meet::isModerator($meet_schedule_id)) {
 }
 
 $domain = Meet::getDomainURL();
+
+$nameIdentification = '';
+if(User::isLogged()){
+    $nameIdentification = User::getNameIdentification();
+}
+
 ?>
 <!DOCTYPE html>
 <html>
@@ -72,8 +47,8 @@ $domain = Meet::getDomainURL();
         <link rel="icon" type="image/png" href="<?php echo $config->getFavicon(true); ?>">
         <link rel="shortcut icon" href="<?php echo $config->getFavicon(); ?>" sizes="16x16,24x24,32x32,48x48,144x144">
         <meta name="msapplication-TileImage" content="<?php echo $config->getFavicon(true); ?>">
-        <script src="<?php echo $global['webSiteRootURL']; ?>view/js/jquery-3.5.1.min.js"></script>
-        <script src="<?php echo $global['webSiteRootURL']; ?>view/js/script.js"></script>
+        <script src="<?php echo getCDN(); ?>view/js/jquery-3.5.1.min.js"></script>
+        <script src="<?php echo getCDN(); ?>view/js/script.js"></script>
         <script>
             var getRTMPLink = '<?php echo Live::getRTMPLink($meet->getUsers_id()); ?>';
         </script>
@@ -118,16 +93,21 @@ $domain = Meet::getDomainURL();
             #divMeetToIFrame {
                 height: 100%;
                 background: #000;
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
             }
+
         </style>
         <?php
         include $global['systemRootPath'] . 'plugin/Meet/api.js.php';
         ?>
     </head>
     <body>
-        <div id="divMeetToIFrame"></div> 
+        <div id="divMeetToIFrame"></div>
         <script>
-            aVideoMeetStart('<?php echo $domain; ?>', '<?php echo $meet->getName(); ?>', '<?php echo Meet::getToken($meet_schedule_id); ?>', '<?php echo User::getEmail_(); ?>', '<?php echo User::getNameIdentification(); ?>', <?php echo json_encode(Meet::getButtons($meet_schedule_id)); ?>);
+            aVideoMeetStart('<?php echo $domain; ?>', '<?php echo preg_replace('/[^\00-\255]+/u', '', $meet->getCleanName()); ?>', '<?php echo Meet::getToken($meet_schedule_id, User::getId()); ?>', '<?php echo User::getEmail_(); ?>', '<?php echo $nameIdentification; ?>', <?php echo json_encode(Meet::getButtons($meet_schedule_id)); ?>);
 
 <?php
 echo implode(PHP_EOL, $apiExecute);

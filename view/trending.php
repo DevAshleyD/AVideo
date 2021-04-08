@@ -23,25 +23,13 @@ require_once $global['systemRootPath'] . 'objects/video.php';
 
 $total = Video::getTotalVideos();
 
-if (empty($_POST['rowCount'])) {
-    if (!empty($_GET['rowCount'])) {
-        $_REQUEST['rowCount'] = $_GET['rowCount'];
-    } else {
-        $_REQUEST['rowCount'] = 5;
-    }
-}
+$_REQUEST['rowCount'] = 10;
+$_REQUEST['current'] = getCurrentPage();
 
-if (empty($_POST['current'])) {
-    if (!empty($_GET['current'])) {
-        $_POST['current'] = $_GET['current'];
-    } else {
-        $_POST['current'] = 1;
-    }
-}
 //$_POST['sort']['likes'] = "DESC";
 $_GET['sort']['trending'] = 1;
 
-$pages = ceil($total / $_POST['rowCount']);
+$pages = ceil($total / $_REQUEST['rowCount']);
 $videos = Video::getAllVideos();
 unset($_POST['sort']);
 $metaDescription = __("Trending");
@@ -49,15 +37,15 @@ $metaDescription = __("Trending");
 <!DOCTYPE html>
 <html lang="<?php echo $_SESSION['language']; ?>">
     <head>
-        <title><?php echo $config->getWebSiteTitle(); ?> <?php echo __("Trending").getSEOComplement(); ?></title>
+        <title><?php echo __("Trending") . getSEOComplement() . $config->getPageTitleSeparator() . $config->getWebSiteTitle(); ?></title>
         <?php include $global['systemRootPath'] . 'view/include/head.php'; ?>
-        <link href="<?php echo $global['webSiteRootURL']; ?>plugin/Gallery/style.css" rel="stylesheet" type="text/css"/>
+        <link href="<?php echo getCDN(); ?>plugin/Gallery/style.css" rel="stylesheet" type="text/css"/>
     </head>
 
     <body class="<?php echo $global['bodyClass']; ?>">
         <?php include $global['systemRootPath'] . 'view/include/navbar.php'; ?>
 
-        <div class="container">     
+        <div class="container">
             <div class="row results gallery">
                 <?php
                 //var_dump($rows);
@@ -77,7 +65,7 @@ $metaDescription = __("Trending");
                                 <?php
                                 if (!empty($imgGif)) {
                                     ?>
-                                    <img src="<?php echo $global['webSiteRootURL']; ?>view/img/loading-gif.png" data-src="<?php echo $imgGif; ?>" style="position: absolute; top: 0; display: none;" alt="<?php echo $value['title']; ?>" id="thumbsGIF<?php echo $value['id']; ?>" class="thumbsGIF img-responsive" height="196" />
+                                    <img src="<?php echo getCDN(); ?>view/img/loading-gif.png" data-src="<?php echo $imgGif; ?>" style="position: absolute; top: 0; display: none;" alt="<?php echo $value['title']; ?>" id="thumbsGIF<?php echo $value['id']; ?>" class="thumbsGIF img-responsive" height="196" />
                                 <?php } ?>
                                 <span class="duration"><?php echo Video::getCleanDuration($value['duration']); ?></span>
                             </div>
@@ -118,7 +106,7 @@ $metaDescription = __("Trending");
 
                                 <?php
                                 if (empty($advancedCustom->doNotDisplayViews)) {
-                                    ?> 
+                                    ?>
                                     <div>
                                         <i class="fa fa-eye"></i>
                                         <span itemprop="interactionCount">
@@ -154,40 +142,40 @@ $metaDescription = __("Trending");
                                 <h4 class="mainAreaDescription" itemprop="description" style="max-height: 7vw; padding: 0; margin: 5px 0;"><?php echo $value['description']; ?></h4>
                             </div>
                         </div>
-                    </div>    
+                    </div>
                     <?php
                 }
                 ?>
-            </div>    
+            </div>
             <?php
             if (!empty($pages)) {
                 ?>
                 <nav aria-label="Page navigation">
                     <ul class="pagination justify-content-center">
                         <li class="page-item <?php
-                        if ($_POST['current'] == 1) {
+                        if ($_REQUEST['current'] == 1) {
                             echo "disabled";
                         }
                         ?>">
-                            <a class="page-link" href="<?php echo "{$global['webSiteRootURL']}trending?current=" . ($_POST['current'] - 1); ?>" tabindex="-1">Previous</a>
+                            <a class="page-link" href="<?php echo "{$global['webSiteRootURL']}trending?current=" . ($_REQUEST['current'] - 1); ?>" tabindex="-1"><?php echo __('Previous') ?></a>
                         </li>
                         <?php
                         $size = 5;
                         $i = 1;
                         $end = $pages;
 
-                        if ($_POST['current'] - $size > $i) {
-                            $i = $_POST['current'] - $size;
+                        if ($_REQUEST['current'] - $size > $i) {
+                            $i = $_REQUEST['current'] - $size;
                         }
 
-                        if ($_POST['current'] + $size < $end) {
-                            $end = $_POST['current'] + $size;
+                        if ($_REQUEST['current'] + $size < $end) {
+                            $end = $_REQUEST['current'] + $size;
                         }
 
                         for (; $i <= $end; $i++) {
                             ?>
                             <li class="page-item  <?php
-                            if ($_POST['current'] == $i) {
+                            if ($_REQUEST['current'] == $i) {
                                 echo "active";
                             }
                             ?>"><a class="page-link" href="<?php echo "{$global['webSiteRootURL']}trending?current={$i}"; ?>"><?php echo $i; ?></a></li>
@@ -195,11 +183,11 @@ $metaDescription = __("Trending");
                             }
                             ?>
                         <li class="page-item <?php
-                        if ($_POST['current'] == $pages) {
+                        if ($_REQUEST['current'] == $pages) {
                             echo "disabled";
                         }
                         ?>">
-                            <a class="page-link" href="<?php echo "{$global['webSiteRootURL']}trending?current=" . ($_POST['current'] + 1); ?>">Next</a>
+                            <a class="page-link" href="<?php echo "{$global['webSiteRootURL']}trending?current=" . ($_REQUEST['current'] + 1); ?>"><?php echo __('Next') ?></a>
                         </li>
                     </ul>
                 </nav>
@@ -212,15 +200,15 @@ $metaDescription = __("Trending");
             <div class="infinite-scroll-request loader-ellips text-center">
                 <img src="img/loading.gif" alt=""/>
             </div>
-            <p class="infinite-scroll-last text-center text-muted">End of content</p>
-            <p class="infinite-scroll-error text-center text-muted">No more pages to load</p>
+            <p class="infinite-scroll-last text-center text-muted"><?php echo __('End of content')?></p>
+            <p class="infinite-scroll-error text-center text-muted"><?php echo __('No more pages to load')?></p>
         </div>
         <?php
-        if ($_POST['current'] + 1 <= $pages) {
+        if ($_REQUEST['current'] + 1 <= $pages) {
             ?>
             <!-- pagination has path -->
             <p class="pagination hidden">
-                <a class="pagination__next" href="<?php echo $global['webSiteRootURL']; ?>trending?current=<?php echo $_POST['current'] + 1; ?>">Next page</a>
+                <a class="pagination__next" href="<?php echo $global['webSiteRootURL']; ?>trending?current=<?php echo $_REQUEST['current'] + 1; ?>"><?php echo __('Next page') ?></a>
             </p>
             <?php
         }
@@ -228,8 +216,8 @@ $metaDescription = __("Trending");
         <?php
         include $global['systemRootPath'] . 'view/include/footer.php';
         ?>
-        <script src="<?php echo $global['webSiteRootURL']; ?>plugin/Gallery/script.js" type="text/javascript"></script>
-        <script src="<?php echo $global['webSiteRootURL']; ?>view/js/infinite-scroll.pkgd.min.js" type="text/javascript"></script>
+        <script src="<?php echo getCDN(); ?>plugin/Gallery/script.js" type="text/javascript"></script>
+        <script src="<?php echo getCDN(); ?>view/js/infinite-scroll.pkgd.min.js" type="text/javascript"></script>
         <script>
             $(document).ready(function () {
                 $container = $('.results').infiniteScroll({
@@ -245,17 +233,6 @@ $metaDescription = __("Trending");
                 mouseEffect();
                 lazyImage();
             });
-            function lazyImage() {
-                $('.thumbsJPG').lazy({
-                    effect: 'fadeIn',
-                    visibleOnly: true,
-                    // called after an element was successfully handled
-                    afterLoad: function (element) {
-                        element.removeClass('blur');
-                    }
-                });
-                mouseEffect();
-            }
         </script>
     </body>
 </html>

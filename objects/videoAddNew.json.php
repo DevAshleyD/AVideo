@@ -16,14 +16,13 @@ $info = $infoObj = "";
 require_once 'video.php';
 
 if (!empty($_POST['id'])) {
-    if (!Video::canEdit($_POST['id'])) {
+    if (!Video::canEdit($_POST['id']) && !Permissions::canModerateVideos()) {
         die('{"error":"2 ' . __("Permission denied") . '"}');
     }
 }
 
-if (!is_writable("{$global['systemRootPath']}objects/htmlpurifier/HTMLPurifier/DefinitionCache/Serializer")) {
-    //Directory /home/daniel/danielneto.com@gmail.com/htdocs/AVideo/objects/htmlpurifier/HTMLPurifier/DefinitionCache/Serializer not writable, please chmod to 777 
-    die('{"error":"Directory ' . $global['systemRootPath'] . 'objects/htmlpurifier/HTMLPurifier/DefinitionCache/Serializer not writable, please chmod to 777 "}');
+if (!is_writable("{$global['systemRootPath']}objects/ezyang/htmlpurifier/library/HTMLPurifier/DefinitionCache/Serializer")) {
+    die('{"error":"Directory ' . $global['systemRootPath'] . 'objects/ezyang/htmlpurifier/library/HTMLPurifier/DefinitionCache/Serializer not writable, please chmod to 777 "}');
 }
 
 TimeLogStart(__FILE__);
@@ -81,7 +80,7 @@ if (!empty($_POST['videoLink'])) {
 }else if(!empty($obj->getType()) && ($obj->getType() == 'video' || $obj->getType() == 'serie' || $obj->getType() == 'audio')){
     $obj->setVideoLink("");
 }
-    
+
 TimeLogEnd(__FILE__, __LINE__);
 if (!empty($_POST['isArticle'])) {
     $obj->setType("article");
@@ -96,14 +95,14 @@ $obj->setNext_videos_id($_POST['next_videos_id']);
 if (!empty($_POST['description'])) {
     $obj->setDescription($_POST['description']);
 }
-if (empty($advancedCustomUser->userCanNotChangeCategory) || User::isAdmin()) {
+if (empty($advancedCustomUser->userCanNotChangeCategory) || Permissions::canModerateVideos()) {
     $obj->setCategories_id($_POST['categories_id']);
 }
 
-if (empty($advancedCustomUser->userCanNotChangeUserGroup) || User::isAdmin()) {
+if (empty($advancedCustomUser->userCanNotChangeUserGroup) || Permissions::canModerateVideos()) {
     $obj->setVideoGroups(empty($_POST['videoGroups']) ? array() : $_POST['videoGroups']);
 }
-if ($advancedCustomUser->userCanChangeVideoOwner || User::isAdmin()) {
+if ($advancedCustomUser->userCanChangeVideoOwner || Permissions::canModerateVideos()) {
     $obj->setUsers_id($_POST['users_id']);
 }
 
@@ -119,8 +118,12 @@ $obj->setExternalOptions(@$_POST['externalOptions']);
 TimeLogEnd(__FILE__, __LINE__);
 $resp = $obj->save(true);
 // if is a new embed video
-if (empty($_POST['id']) && $obj->getType() == 'embed') {
+if (empty($_POST['id']) && ($obj->getType() == 'embed' || $obj->getType() == 'linkVideo' )) {
     AVideoPlugin::afterNewVideo($resp);
+}
+
+if(User::isAdmin()){
+    $obj->updateViewsCount($_REQUEST['views_count']);
 }
 
 AVideoPlugin::saveVideosAddNew($_POST, $resp);
@@ -132,5 +135,7 @@ $obj->info = json_encode($info);
 $obj->infoObj = json_encode($infoObj);
 $obj->videos_id = intval($resp);
 $obj->video = Video::getVideo($obj->videos_id, false, true);
+
+
 TimeLogEnd(__FILE__, __LINE__);
 echo json_encode($obj);

@@ -15,6 +15,9 @@ class IP2Location extends ObjectYPT {
     }
 
     static function getLocation($ip) {
+        if(!self::isTableInstalled() || !AVideoPlugin::isEnabledByName('User_Location')){
+            return false;
+        }
         // samples
         // brazil 2.20.147.123
         // spain 2.22.54.123
@@ -54,7 +57,7 @@ class IP2Location extends ObjectYPT {
         if (!empty($_SESSION['IP2Location'][$ip]['country_name']) && $_SESSION['IP2Location'][$ip]['country_name'] == "United States of America") {
             $_SESSION['IP2Location'][$ip]['country_name'] = "United States";
         }
-        _error_log("IP2Location::getLocation({$ip}) " . get_browser_name() . " " . json_encode($_SESSION['IP2Location'][$ip]));
+        //_error_log("IP2Location::getLocation({$ip}) " . get_browser_name() . " " . json_encode($_SESSION['IP2Location'][$ip]));
         return $_SESSION['IP2Location'][$ip];
     }
 

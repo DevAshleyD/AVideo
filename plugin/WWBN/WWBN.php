@@ -4,6 +4,12 @@ require_once $global['systemRootPath'] . 'plugin/Plugin.abstract.php';
 
 class WWBN extends PluginAbstract {
 
+    public function getTags() {
+        return array(
+            PluginTags::$RECOMMENDED,
+            PluginTags::$FREE,
+        );
+    }
     public function getDescription() {
         global $global;
         $desc = "WWBN Network Index (this plugin is under development)<br>";
@@ -11,7 +17,7 @@ class WWBN extends PluginAbstract {
                 . "<input style='width:100%' type='text' value='". self::getToken()."' readonly>";
         return $desc;
     }
-    
+
     static function getToken(){
         global $global;
         $obj = new stdClass();
@@ -38,7 +44,7 @@ class WWBN extends PluginAbstract {
         $obj = new stdClass();
         return $obj;
     }
-    
+
     public function getPluginMenu() {
         global $global;
         return '

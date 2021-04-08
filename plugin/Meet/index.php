@@ -9,12 +9,11 @@ if (!isset($global['systemRootPath'])) {
 $obj = AVideoPlugin::getObjectDataIfEnabled("Meet");
 //_error_log(json_encode($_SERVER));
 if (empty($obj)) {
-    die("Plugin disabled");
+    forbiddenPage("Plugin disabled");
 }
 
 if (!User::isLogged()) {
-    header("Location: {$global['webSiteRootURL']}?error=" . __("You can not do this"));
-    exit;
+    forbiddenPage("You can not do this");
 }
 $userCredentials = User::loginFromRequestToGet();
 if (User::isAdmin() && !empty($_GET['newServer'])) {
@@ -25,13 +24,13 @@ if (User::isAdmin() && !empty($_GET['newServer'])) {
 <!DOCTYPE html>
 <html lang="<?php echo $_SESSION['language']; ?>">
     <head>
-        <title><?php echo __("Live"); ?> - <?php echo $config->getWebSiteTitle(); ?></title>
+        <title><?php echo __("Meet") . $config->getPageTitleSeparator() . $config->getWebSiteTitle(); ?></title>
         <?php
         include $global['systemRootPath'] . 'view/include/head.php';
         ?>
 
-        <link rel="stylesheet" type="text/css" href="<?php echo $global['webSiteRootURL']; ?>view/css/DataTables/datatables.min.css"/>
-        <link href="<?php echo $global['webSiteRootURL']; ?>view/js/bootstrap-datetimepicker/css/bootstrap-datetimepicker.min.css" rel="stylesheet" type="text/css"/>
+        <link rel="stylesheet" type="text/css" href="<?php echo getCDN(); ?>view/css/DataTables/datatables.min.css"/>
+        <link href="<?php echo getCDN(); ?>view/js/bootstrap-datetimepicker/css/bootstrap-datetimepicker.min.css" rel="stylesheet" type="text/css"/>
         <style>
             .serverLabels{
                 padding-bottom: 15px;
@@ -74,7 +73,7 @@ if (User::isAdmin() && !empty($_GET['newServer'])) {
                                 if (User::canCreateMeet()) {
                                     ?>
                                     <li><a data-toggle="tab" href="#createMeet"><i class="far fa-calendar-alt"></i>  <span class="hidden-sm hidden-xs"><?php echo __("Schedule"); ?></span></a></li>
-                                    <li><a data-toggle="tab" href="#" onclick="startMeetNow();return false;"><i class="far fa-comments"></i>  <?php echo __("New Meet"); ?></a></li>
+                                    <li><a data-toggle="tab" href="#" onclick="_startMeetNow();return false;"><i class="far fa-comments"></i>  <?php echo __("New Meet"); ?></a></li>
                                     <?php
                                 }
                                 ?>
@@ -92,119 +91,118 @@ if (User::isAdmin() && !empty($_GET['newServer'])) {
                                         <?php
                                     }
                                     ?>
-                            </div> 
-                        </div>   
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
 
 
-            <script type="text/javascript" src="<?php echo $global['webSiteRootURL']; ?>view/css/DataTables/datatables.min.js"></script>
-            <script src="<?php echo $global['webSiteRootURL']; ?>js/bootstrap-datetimepicker/js/bootstrap-datetimepicker.min.js" type="text/javascript"></script>
+            <script type="text/javascript" src="<?php echo getCDN(); ?>view/css/DataTables/datatables.min.js"></script>
+            <script src="<?php echo getCDN(); ?>js/bootstrap-datetimepicker/js/bootstrap-datetimepicker.min.js" type="text/javascript"></script>
 
             <?php
             include $global['systemRootPath'] . 'view/include/footer.php';
             ?>
             <script>
-                                    var serverLabelsRequestTime;
-                                    $(document).ready(function () {
+                                        var serverLabelsRequestTime;
+                                        $(document).ready(function () {
 <?php $today = getdate(); ?>
-                                        var d = new Date(<?php echo $today['year'] . "," . $today['mon'] . "," . $today['mday'] . "," . $today['hours'] . "," . $today['minutes'] . "," . $today['seconds']; ?>);
-                                        setInterval(function () {
-                                            d.setSeconds(d.getSeconds() + 1);
-                                            $('#serverTime').html("<i class=\"far fa-clock\"></i> " + (d.getHours() + ':' + d.getMinutes() + ':' + d.getSeconds()));
-                                        }, 1000);
+                                            var d = new Date(<?php echo $today['year'] . "," . $today['mon'] . "," . $today['mday'] . "," . $today['hours'] . "," . $today['minutes'] . "," . $today['seconds']; ?>);
+                                            setInterval(function () {
+                                                d.setSeconds(d.getSeconds() + 1);
+                                                $('#serverTime').html("<i class=\"far fa-clock\"></i> " + (d.getHours() + ':' + d.getMinutes() + ':' + d.getSeconds()));
+                                            }, 1000);
 
-                                        $('#indexTabs .nav-tabs a').click(function (e) {
-                                            var href = $(this).attr('href');
-                                            if(href && href!=="#"){
-                                                var now_tab = $(href);
-                                                console.log("tab clicked");
-                                                if ($(now_tab).attr('url')) {
-                                                    var url = $(now_tab).attr('url');
-                                                    $(now_tab).attr('url', '');
-                                                    if (url) {
-                                                        $.ajax({
-                                                            url: url,
+                                            $('#indexTabs .nav-tabs a').click(function (e) {
+                                                var href = $(this).attr('href');
+                                                if (href && href !== "#") {
+                                                    var now_tab = $(href);
+                                                    console.log("tab clicked");
+                                                    if ($(now_tab).attr('url')) {
+                                                        var url = $(now_tab).attr('url');
+                                                        $(now_tab).attr('url', '');
+                                                        if (url) {
+                                                            $.ajax({
+                                                                url: url,
+                                                                success: function (response) {
+                                                                    $(now_tab).html(response);
+                                                                }
+                                                            });
+                                                        }
+                                                    } else {
+                                                        console.log("no URL on tab clicked");
+                                                    }
+                                                }
+                                            });
+                                            try {
+                                                $('#indexTabs .nav-tabs a').first().trigger("click");
+                                            } catch (e) {
+
+                                            }
+                                            serverLabels();
+                                        });
+                                        var serverLabelsStartTime;
+                                        var serverLabelsRunning = false;
+                                        function serverLabels() {
+                                            if (serverLabelsRunning) {
+                                                return false;
+                                            }
+                                            serverLabelsRunning = true;
+                                            serverLabelsStartTime = new Date().getTime();
+                                            $.ajax({
+                                                url: '<?php echo $global['webSiteRootURL']; ?>plugin/Meet/serverLabels.php?<?php echo $userCredentials; ?>',
                                                             success: function (response) {
-                                                                $(now_tab).html(response);
+                                                                setTimeout(function () {
+                                                                    serverLabelsRunning = false;
+                                                                }, 2000);
+                                                                serverLabelsRequestTime = new Date().getTime() - serverLabelsStartTime;
+                                                                $('.serverLabels').html(response);
                                                             }
                                                         });
                                                     }
-                                                } else {
-                                                    console.log("no URL on tab clicked");
-                                                }
-                                            }
-                                        });
-                                        try {
-                                            $('#indexTabs .nav-tabs a').first().trigger("click");
-                                        } catch (e) {
-
-                                        }
-                                        serverLabels();
-                                    });
-                                    var serverLabelsStartTime;
-                                    var serverLabelsRunning = false;
-                                    function serverLabels() {
-                                        if(serverLabelsRunning){
-                                            return false;
-                                        }
-                                        serverLabelsRunning = true;
-                                        serverLabelsStartTime = new Date().getTime();
-                                        $.ajax({
-                                            url: '<?php echo $global['webSiteRootURL']; ?>plugin/Meet/serverLabels.php?<?php echo $userCredentials; ?>',
-                                                        success: function (response) {
-                                                            setTimeout(function(){serverLabelsRunning = false;},2000);
-                                                            serverLabelsRequestTime = new Date().getTime() - serverLabelsStartTime;
-                                                            $('.serverLabels').html(response);
-                                                        }
-                                                    });
-                                                }
 
 
 <?php
 if (User::canCreateMeet()) {
     ?>
-                                                    function startMeetNow() {
-                                                        swal({
-                                                            text: "<?php echo __("Meet Topic"); ?>",
-                                                            content: "input",
-                                                            button: {
-                                                                text: "<?php echo __("Start Now"); ?>",
-                                                                closeModal: false,
-                                                            },
-                                                        })
-                                                                .then(name => {
-                                                                    if (!name)
-                                                                        throw null;
-                                                                    return fetch('<?php echo $global['webSiteRootURL']; ?>plugin/Meet/saveMeet.json.php?<?php echo $userCredentials; ?>&RoomTopic='+encodeURI(name));
-                                                                })
-                                                                .then(results => {
-                                                                  return results.json();
-                                                                })
-                                                                .then(response => {
-                                                                    if (response.error) {
-                                                                        avideoAlert("<?php echo __("Sorry!"); ?>", response.msg, "error");
-                                                                        modal.hidePleaseWait();
-                                                                    } else {
-                                                                        //console.log(response.link);
-                                                                        //console.log(response.link+'?<?php echo $userCredentials; ?>');
-                                                                        document.location = response.link + '?<?php echo $userCredentials; ?>';
-                                                                        //avideoAlertError(response.link + '?<?php echo $userCredentials; ?>');
-                                                                    }
+                                                        function _startMeetNow() {
+                                                            console.log('_startMeetNow');
+                                                            swal({
+                                                                text: "<?php echo __("Meet Topic"); ?>",
+                                                                content: "input",
+                                                                button: {
+                                                                    text: "<?php echo __("Start Now"); ?>",
+                                                                    closeModal: false,
+                                                                },
+                                                            }).then(function (name) {
+                                                                if (!name)
+                                                                    throw null;
+                                                                return fetch('<?php echo $global['webSiteRootURL']; ?>plugin/Meet/saveMeet.json.php?<?php echo $userCredentials; ?>&RoomTopic=' + encodeURI(name));
+                                                            }).then(function (results) {
+                                                                return results.json();
+                                                            }).then(function (response) {
+                                                                if (response.error) {
+                                                                    avideoAlert("<?php echo __("Sorry!"); ?>", response.msg, "error");
+                                                                    modal.hidePleaseWait();
+                                                                } else {
+                                                                    //console.log(response.link);
+                                                                    //console.log(response.link+'?<?php echo $userCredentials; ?>');
+                                                                    document.location = response.link + '?<?php echo $userCredentials; ?>';
+                                                                    //avideoAlertError(response.link + '?<?php echo $userCredentials; ?>');
+                                                                }
 
-                                                                })
-                                                                .catch(err => {
-                                                                    if (err) {
-                                                                        swal("Oh noes!", "The AJAX request failed!", "error");
-                                                                    } else {
-                                                                        swal.stopLoading();
-                                                                        swal.close();
-                                                                    }
-                                                                });
-                                                        return false;
+                                                            }).catch(function (err) {
+                                                                if (err) {
+                                                                    swal("Oh noes!", "The AJAX request failed!", "error");
+                                                                } else {
+                                                                    swal.stopLoading();
+                                                                    swal.close();
+                                                                }
+                                                            });
+                                                            return false;
 
-                                                    }
+                                                        }
     <?php
 }
 ?>

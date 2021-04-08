@@ -2,12 +2,20 @@
 if (!isset($global['systemRootPath'])) {
     require_once '../../videos/configuration.php';
 }
-
+$isSerie = 1;
+$isPlayList = true;
 require_once $global['systemRootPath'] . 'objects/playlist.php';
 require_once $global['systemRootPath'] . 'plugin/PlayLists/PlayListElement.php';
 
 if (!PlayList::canSee($_GET['playlists_id'], User::getId())) {
     die('{"error":"' . __("Permission denied") . '"}');
+}
+
+$video = PlayLists::isPlayListASerie($_GET['playlists_id']);
+if (!empty($video)) {
+    $video = Video::getVideo($video['id']);
+    include $global['systemRootPath'] . 'view/modeYoutube.php';
+    exit;
 }
 
 $playListObj = new PlayList($_GET['playlists_id']);
@@ -16,7 +24,12 @@ $playList = PlayList::getVideosFromPlaylist($_GET['playlists_id']);
 
 $playListData = array();
 $videoStartSeconds = array();
-foreach ($playList as $value) {
+$users_id = User::getId();
+foreach ($playList as $key => $value) {
+    if(!User::isAdmin() && !Video::userGroupAndVideoGroupMatch($users_id, $value['videos_id'])){
+        unset($playList[$key]);
+        continue;
+    }
     if ($value['type'] === 'embed') {
         $sources[0]['type'] = 'video';
         $sources[0]['url'] = $value["videoLink"];
@@ -32,7 +45,7 @@ foreach ($playList as $value) {
 
     $playListSources = array();
     foreach ($sources as $value2) {
-        if ($value2['type'] !== 'video' && $value2['type'] !== 'audio') {
+        if ($value2['type'] !== 'video' && $value2['type'] !== 'audio' && $value2['type'] !== 'serie') {
             continue;
         }
         $playListSources[] = new playListSource($value2['url'], $value['type'] === 'embed');
@@ -44,19 +57,25 @@ foreach ($playList as $value) {
 }
 
 $video = PlayLists::isPlayListASerie($_GET['playlists_id']);
+
 if (!empty($video['id'])) {
     AVideoPlugin::getEmbed($video['id']);
+    setVideos_id($video['id']);
+} else if (!empty($playListData[$playlist_index])) {
+    setVideos_id($playListData[$playlist_index]['id']);
 }
+
+$playlist_index = intval(@$_REQUEST['playlist_index']);
 ?>
 <!DOCTYPE html>
 <html lang="<?php echo $_SESSION['language']; ?>">
     <head>
-        <title><?php echo $playListObj->getName(); ?> :: <?php echo $config->getWebSiteTitle(); ?></title>
-        <link href="<?php echo $global['webSiteRootURL']; ?>view/js/video.js/video-js.min.css" rel="stylesheet" type="text/css"/>
-        <link href="<?php echo $global['webSiteRootURL']; ?>view/css/player.css" rel="stylesheet" type="text/css"/>
-        <link href="<?php echo $global['webSiteRootURL']; ?>view/css/social.css" rel="stylesheet" type="text/css"/>
+        <title><?php echo $playListObj->getName() . $config->getPageTitleSeparator() . $config->getWebSiteTitle(); ?></title>
+        <link href="<?php echo getCDN(); ?>view/js/video.js/video-js.min.css" rel="stylesheet" type="text/css"/>
+        <link href="<?php echo getCDN(); ?>view/css/player.css" rel="stylesheet" type="text/css"/>
+        <link href="<?php echo getCDN(); ?>view/css/social.css" rel="stylesheet" type="text/css"/>
 
-        <link href="<?php echo $global['webSiteRootURL']; ?>plugin/PlayLists/videojs-playlist-ui/videojs-playlist-ui.css" rel="stylesheet">
+        <link href="<?php echo getCDN(); ?>plugin/PlayLists/videojs-playlist-ui/videojs-playlist-ui.css" rel="stylesheet">
 
         <?php include $global['systemRootPath'] . 'view/include/head.php'; ?>
         <style>
@@ -116,51 +135,15 @@ if (!empty($video['id'])) {
                     <?php
                 }
                 ?>
-
-                <div class="row main-video" id="mvideo">
-                    <div class="col-sm-2 col-md-2 firstC"></div>
-                    <div class="col-sm-8 col-md-8 secC">
-                        <div id="videoContainer">
-                            <div id="floatButtons" style="display: none;">
-                                <p class="btn btn-outline btn-xs move">
-                                    <i class="fas fa-expand-arrows-alt"></i>
-                                </p>
-                                <button type="button" class="btn btn-outline btn-xs"
-                                        onclick="closeFloatVideo(); floatClosed = 1;">
-                                    <i class="fas fa-times"></i>
-                                </button>
-                            </div>
-                            <div id="main-video" class="embed-responsive embed-responsive-16by9">
-
-                                <video playsinline
-                                <?php if ($config->getAutoplay() && false) { // disable it for now    ?>
-                                           autoplay="true"
-                                           muted="muted"
-                                       <?php } ?>
-                                       preload="auto"
+                <!-- playlist player -->
+                <?php
+                $htmlMediaTag = '<video playsinline preload="auto"
                                        controls class="embed-responsive-item video-js vjs-default-skin vjs-big-play-centered" id="mainVideo"
-                                       data-setup='{"techOrder": ["youtube","html5"]}'>
-                                </video>
-
-                            </div>
-                            <?php
-                            if (AVideoPlugin::isEnabled("0e225f8e-15e2-43d4-8ff7-0cb07c2a2b3b")) {
-                                require_once $global['systemRootPath'] . 'plugin/VideoLogoOverlay/VideoLogoOverlay.php';
-                                $style = VideoLogoOverlay::getStyle();
-                                $url = VideoLogoOverlay::getLink();
-                                ?>
-                                <div style="<?php echo $style; ?>" class="VideoLogoOverlay">
-                                    <a href="<?php echo $url; ?>" target="_blank"> <img src="<?php echo $global['webSiteRootURL']; ?>videos/logoOverlay.png" alt="Logo" class="img-responsive col-lg-12 col-md-8 col-sm-7 col-xs-6"></a>
-                                </div>
-                            <?php } ?>
-
-                            <a href="<?php echo $global["HTTP_REFERER"]; ?>" class="btn btn-outline btn-xs" style="position: absolute; top: 5px; right: 5px; display: none;" id="youtubeModeOnFullscreenCloseButton">
-                                <i class="fas fa-times"></i>
-                            </a>
-                        </div>
-                    </div>
-                    <div class="col-sm-2 col-md-2"></div>
-                </div>    
+                                       data-setup=\'{"techOrder": ["youtube","html5"]}\'>
+                                </video>';
+                echo PlayerSkins::getMediaTag($video['filename'], $htmlMediaTag);
+                ?>
+                <!-- playlist player END -->
 
                 <div class="row" id="modeYoutubeBottom">
                     <div class="col-sm-1 col-md-1"></div>
@@ -205,18 +188,19 @@ if (!empty($video['id'])) {
                 </div>
             <?php } ?>
         </div>
-        <script src="<?php echo $global['webSiteRootURL']; ?>view/js/video.js/video.min.js" type="text/javascript"></script>
+        <?php
+        include $global['systemRootPath'] . 'view/include/video.min.js.php';
+        ?>
         <?php
         echo AVideoPlugin::afterVideoJS();
         include $global['systemRootPath'] . 'view/include/footer.php';
         $videoJSArray = array(
-            "view/js/videojs-persistvolume/videojs.persistvolume.js",
             "view/js/BootstrapMenu.min.js");
         $jsURL = combineFiles($videoJSArray, "js");
         ?>
-        <script src="<?php echo $jsURL; ?>" type="text/javascript"></script><script src="<?php echo $global['webSiteRootURL']; ?>plugin/PlayLists/videojs-playlist/videojs-playlist.js"></script>
-        <script src="<?php echo $global['webSiteRootURL']; ?>plugin/PlayLists/videojs-playlist-ui/videojs-playlist-ui.js"></script>
-        <script src="<?php echo $global['webSiteRootURL']; ?>view/js/videojs-youtube/Youtube.js"></script>
+        <script src="<?php echo $jsURL; ?>" type="text/javascript"></script><script src="<?php echo getCDN(); ?>plugin/PlayLists/videojs-playlist/videojs-playlist.js"></script>
+        <script src="<?php echo getCDN(); ?>plugin/PlayLists/videojs-playlist-ui/videojs-playlist-ui.js"></script>
+        <script src="<?php echo getCDN(); ?>view/js/videojs-youtube/Youtube.js"></script>
         <script>
 
                                             var playerPlaylist = <?php echo json_encode($playListData); ?>;
@@ -249,6 +233,8 @@ if (!empty($video['id'])) {
                                             player.playlist.repeat(true);
                                             // Initialize the playlist-ui plugin with no option (i.e. the defaults).
                                             player.playlistUi();
+                                            player.playlist.currentItem(<?php echo $playlist_index; ?>);
+
                                             var timeout;
                                             $(document).ready(function () {
 
@@ -298,6 +284,9 @@ if (!empty($video['id'])) {
                                                     setTimeout(function () {
                                                         player.currentTime(playerPlaylist[index].videoStartSeconds);
                                                     }, 500);
+                                                    if (typeof enableDownloadProtection === 'function') {
+                                                        enableDownloadProtection();
+                                                    }
                                                 });
                                                 setTimeout(function () {
                                                     var Button = videojs.getComponent('Button');

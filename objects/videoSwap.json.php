@@ -10,7 +10,7 @@ $obj = new stdClass();
 $obj->msg = "";
 $obj->error = true;
 
-if (($advancedCustom->disableVideoSwap) || ($advancedCustom->makeSwapVideosOnlyForAdmin && !User::isAdmin())) {
+if (($advancedCustom->disableVideoSwap) || ($advancedCustom->makeSwapVideosOnlyForAdmin && !Permissions::canModerateVideos())) {
     $obj->msg = __("Swap Disabled");
     die(json_encode($obj));
 }
@@ -38,10 +38,21 @@ if (!$video2->userCanManageVideo()) {
 }
 
 $video1Filename = $video1->getFilename();
+$video1Sites_id = $video1->getSites_id();
+$video1Duration = $video1->getDuration();
+
 $video2Filename = $video2->getFilename();
+$video2Sites_id = $video2->getSites_id();
+$video2Duration = $video2->getDuration();
 
 $video1->setFilename($video2Filename, true);
+$video1->setSites_id($video2Sites_id);
+$video1->setDuration($video2Duration);
+
 $video2->setFilename($video1Filename, true);
+$video2->setSites_id($video1Sites_id);
+$video2->setDuration($video1Duration);
+
 $global['mysqli']->autocommit(false);
 if(!$video1->save()){
     $obj->msg = __("Error on save video 1");

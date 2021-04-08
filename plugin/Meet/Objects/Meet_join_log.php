@@ -12,14 +12,14 @@ class Meet_join_log extends ObjectYPT {
             return false;
         }
         $meet_schedule_id = intval($meet_schedule_id);
-                
+
         if(empty($meet_schedule_id)){
             return false;
         }
         $sql = "SELECT u.*, ml.* FROM  " . static::getTableName() . " ml "
                 . " LEFT JOIN users u ON u.id = ml.users_id "
                 . "WHERE meet_schedule_id=$meet_schedule_id ";
-        
+
         $sql .= self::getSqlFromPost();
         $res = sqlDAL::readSql($sql);
         $fullData = sqlDAL::fetchAllAssoc($res);
@@ -27,6 +27,7 @@ class Meet_join_log extends ObjectYPT {
         $rows = array();
         if ($res != false) {
             foreach ($fullData as $row) {
+                $row = cleanUpRowFromDatabase($row);
                 $rows[] = $row;
             }
         } else {
@@ -34,15 +35,15 @@ class Meet_join_log extends ObjectYPT {
         }
         return $rows;
     }
-    
-    
+
     static function getAllFromUser($users_id) {
         global $global;
         if (!static::isTableInstalled()) {
-            return false;
+            _error_log("You need to install the meet plugin tables before use it", AVideoLog::$ERROR);
+            return array();
         }
         $users_id = intval($users_id);
-                
+
         if(empty($users_id)){
             return false;
         }
@@ -64,8 +65,7 @@ class Meet_join_log extends ObjectYPT {
         }
         return $rows;
     }
-    
-    
+
     static function getSearchFieldsNames() {
         return array('ip', 'user_agent');
     }
@@ -153,7 +153,7 @@ class Meet_join_log extends ObjectYPT {
     function getUser_agent() {
         return $this->user_agent;
     }
-    
+
     static function log($meet_schedule_id) {
         $log = new Meet_join_log(0);
         $log->setIp(getRealIpAddr());
@@ -162,7 +162,14 @@ class Meet_join_log extends ObjectYPT {
         $log->setUsers_id(User::getId());
         return $log->save();
     }
-    
-    
+
+    public function save() {
+
+        if(empty($this->users_id)){
+            $this->users_id = 'NULL';
+        }
+
+        return parent::save();
+    }
 
 }

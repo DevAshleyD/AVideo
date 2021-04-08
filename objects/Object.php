@@ -2,9 +2,9 @@
 
 interface ObjectInterface {
 
-    static function getTableName();
+    public static function getTableName();
 
-    static function getSearchFieldsNames();
+    public static function getSearchFieldsNames();
 }
 
 $tableExists = array();
@@ -13,7 +13,7 @@ abstract class ObjectYPT implements ObjectInterface {
 
     protected $fieldsName = array();
 
-    function __construct($id = "") {
+    public function __construct($id = "") {
         if (!empty($id)) {
             // get data from id
             $this->load($id);
@@ -22,15 +22,52 @@ abstract class ObjectYPT implements ObjectInterface {
 
     protected function load($id) {
         $row = self::getFromDb($id);
-        if (empty($row))
+        if (empty($row)) {
             return false;
+        }
         foreach ($row as $key => $value) {
             $this->$key = $value;
         }
         return true;
     }
 
-    static protected function getFromDb($id) {
+    public static function getNowFromDB() {
+        global $global;
+        $sql = "SELECT NOW() as my_date_field";
+        $res = sqlDAL::readSql($sql);
+        $data = sqlDAL::fetchAssoc($res);
+        sqlDAL::close($res);
+        if ($res) {
+            $row = $data;
+        } else {
+            $row = false;
+        }
+        return $row;
+    }
+
+    public static function setTimeZone() {
+        global $advancedCustom;
+        $row = self::getNowFromDB();
+        $dt = new DateTime($row['my_date_field']);
+        $timeZOnesOptions = object_to_array($advancedCustom->timeZone->type);
+        if (empty($timeZOnesOptions[$advancedCustom->timeZone->value])) {
+            return false;
+        }
+        try {
+            $objDate = new DateTimeZone($timeZOnesOptions[$advancedCustom->timeZone->value]);
+            if (is_object($objDate)) {
+                $dt->setTimezone($objDate);
+                date_default_timezone_set($timeZOnesOptions[$advancedCustom->timeZone->value]);
+                return $dt;
+            }
+            return false;
+        } catch (Exception $exc) {
+            _error_log("setTimeZone: " . $exc->getMessage(), AVideoLog::$ERROR);
+            return false;
+        }
+    }
+
+    protected static function getFromDb($id) {
         global $global;
         $id = intval($id);
         $sql = "SELECT * FROM " . static::getTableName() . " WHERE  id = ? LIMIT 1";
@@ -46,7 +83,7 @@ abstract class ObjectYPT implements ObjectInterface {
         return $row;
     }
 
-    static function getAll() {
+    public static function getAll() {
         global $global;
         if (!static::isTableInstalled()) {
             return false;
@@ -68,7 +105,29 @@ abstract class ObjectYPT implements ObjectInterface {
         return $rows;
     }
 
-    static function getTotal() {
+    public static function getAllActive() {
+        global $global;
+        if (!static::isTableInstalled()) {
+            return false;
+        }
+        $sql = "SELECT * FROM  " . static::getTableName() . " WHERE status='a' ";
+
+        $sql .= self::getSqlFromPost();
+        $res = sqlDAL::readSql($sql);
+        $fullData = sqlDAL::fetchAllAssoc($res);
+        sqlDAL::close($res);
+        $rows = array();
+        if ($res != false) {
+            foreach ($fullData as $row) {
+                $rows[] = $row;
+            }
+        } else {
+            die($sql . '\nError : (' . $global['mysqli']->errno . ') ' . $global['mysqli']->error);
+        }
+        return $rows;
+    }
+
+    public static function getTotal() {
         //will receive
         //current=1&rowCount=10&sort[sender]=asc&searchPhrase=
         global $global;
@@ -83,7 +142,7 @@ abstract class ObjectYPT implements ObjectInterface {
         return $countRow;
     }
 
-    static function getSqlFromPost($keyPrefix = "") {
+    public static function getSqlFromPost($keyPrefix = "") {
         global $global;
         $sql = self::getSqlSearchFromPost();
 
@@ -93,7 +152,7 @@ abstract class ObjectYPT implements ObjectInterface {
             $_POST['sort'][$_GET['columns'][$index]['data']] = $_GET['order'][0]['dir'];
         }
 
-        // add a security here 
+        // add a security here
         if (!empty($_POST['sort'])) {
             foreach ($_POST['sort'] as $key => $value) {
                 $_POST['sort'][xss_esc($key)] = xss_esc($value);
@@ -119,7 +178,7 @@ abstract class ObjectYPT implements ObjectInterface {
         return $sql;
     }
 
-    static function getSqlLimit() {
+    public static function getSqlLimit() {
         global $global;
         $sql = "";
 
@@ -129,7 +188,7 @@ abstract class ObjectYPT implements ObjectInterface {
 
         if (empty($_POST['current']) && !empty($_GET['start'])) {
             $_POST['current'] = ($_GET['start'] / $_GET['length']) + 1;
-        } else if (empty($_POST['current']) && isset($_GET['start'])) {
+        } elseif (empty($_POST['current']) && isset($_GET['start'])) {
             $_POST['current'] = 1;
         }
 
@@ -150,11 +209,11 @@ abstract class ObjectYPT implements ObjectInterface {
         return $sql;
     }
 
-    static function getSqlSearchFromPost() {
+    public static function getSqlSearchFromPost() {
         $sql = "";
         if (!empty($_POST['searchPhrase'])) {
             $_GET['q'] = $_POST['searchPhrase'];
-        } else if (!empty($_GET['search']['value'])) {
+        } elseif (!empty($_GET['search']['value'])) {
             $_GET['q'] = $_GET['search']['value'];
         }
         if (!empty($_GET['q'])) {
@@ -178,7 +237,7 @@ abstract class ObjectYPT implements ObjectInterface {
         return $sql;
     }
 
-    function save() {
+    public function save() {
         if (!$this->tableExists()) {
             _error_log("Save error, table " . static::getTableName() . " does not exists", AVideoLog::$ERROR);
             return false;
@@ -193,9 +252,9 @@ abstract class ObjectYPT implements ObjectInterface {
                     // do nothing
                 } elseif (strtolower($value) == 'modified') {
                     $fields[] = " {$value} = now() ";
-                } else if (is_numeric($this->$value)) {
+                } elseif (is_numeric($this->$value)) {
                     $fields[] = " `{$value}` = {$this->$value} ";
-                } else if (strtolower($this->$value) == 'null') {
+                } elseif (strtolower($this->$value) == 'null') {
                     $fields[] = " `{$value}` = NULL ";
                 } else {
                     $fields[] = " `{$value}` = '{$this->$value}' ";
@@ -251,7 +310,7 @@ abstract class ObjectYPT implements ObjectInterface {
         return $rows;
     }
 
-    function delete() {
+    public function delete() {
         global $global;
         if (!empty($this->id)) {
             $sql = "DELETE FROM " . static::getTableName() . " ";
@@ -264,76 +323,207 @@ abstract class ObjectYPT implements ObjectInterface {
         return false;
     }
 
-    static function setCache($name, $value) {
+    public static function setCache($name, $value) {
         $cachefile = self::getCacheFileName($name);
         make_path($cachefile);
-        $bytes = file_put_contents($cachefile, json_encode($value));
+        
+        $content = json_encode($value);
+        if(empty($content)){
+            $content = $value;
+        }
+        
+        $bytes = @file_put_contents($cachefile, $content);
         self::setSessionCache($name, $value);
-        return $bytes;
+        return array('bytes' => $bytes, 'cachefile' => $cachefile);
     }
 
-    static function cleanCacheName($name) {
-        $name = str_replace(array('/','\\'), array(DIRECTORY_SEPARATOR, DIRECTORY_SEPARATOR), $name);
-        $name = preg_replace('/[!#$&\'()*+,:;=?@[\\]% ]+/', '_', trim(strtolower(cleanString($name))));
+    public static function cleanCacheName($name) {
+        $name = str_replace(array('/', '\\'), array(DIRECTORY_SEPARATOR, DIRECTORY_SEPARATOR), $name);
+        $name = preg_replace('/[!#$&\'()*+,:;=?@[\\]% -]+/', '_', trim(strtolower(cleanString($name))));
         $name = preg_replace('/\/{2,}/', '/', trim(strtolower(cleanString($name))));
+        if (function_exists('mb_ereg_replace')) {
+            $name = mb_ereg_replace("([^\w\s\d\-_~,;\[\]\(\).\\/\\\])", '', $name);
+            // Remove any runs of periods (thanks falstro!)
+            $name = mb_ereg_replace("([\.]{2,})", '', $name);
+        }
         return preg_replace('/[\x00-\x1F\x7F]/u', '', $name);
     }
 
     /**
-     * 
+     *
      * @param type $name
      * @param type $lifetime, if is = 0 it is unlimited
      * @return type
      */
-    static function getCache($name, $lifetime = 60) {
+    public static function getCache($name, $lifetime = 60, $ignoreSessionCache = false) {
+        if (isCommandLineInterface()) {
+            return false;
+        }
+        global $getCachesProcessed, $_getCache;
+
+        if (empty($_getCache)) {
+            $_getCache = array();
+        }
+
+        if (empty($getCachesProcessed)) {
+            $getCachesProcessed = array();
+        }
         $cachefile = self::getCacheFileName($name);
+
+        if (!empty($_getCache[$name])) {
+            return $_getCache[$name];
+        }
+
+        if (empty($getCachesProcessed[$name])) {
+            $getCachesProcessed[$name] = 0;
+        }
+        $getCachesProcessed[$name]++;
+
         if (!empty($_GET['lifetime'])) {
             $lifetime = intval($_GET['lifetime']);
         }
-        if(!empty($lifetime)){// do not session cache if there is not timeout limit
+
+        if (empty($ignoreSessionCache)) {
             $session = self::getSessionCache($name, $lifetime);
             if (!empty($session)) {
+                $_getCache[$name] = $session;
                 return $session;
             }
         }
-
+        /*
+        if (preg_match('/firstpage/i', $cachefile)) {
+            echo var_dump($cachefile) . PHP_EOL;
+            $trace = debug_backtrace();
+            $backtrace_lite = array();
+            foreach ($trace as $call) {
+                echo $call['function'] . "    " . $call['file'] . "    line " . $call['line'] . PHP_EOL;
+            }exit;
+        }
+         /** 
+         */
         if (file_exists($cachefile) && (empty($lifetime) || time() - $lifetime <= filemtime($cachefile))) {
+            //if(preg_match('/getStats/', $cachefile)){echo $cachefile,'<br>';}
             $c = @url_get_contents($cachefile);
-            return json_decode($c);
-        } else if (file_exists($cachefile)) {
+            $json = json_decode($c);
+            
+            if(empty($json) && !is_object($json) && !is_array($json)){
+                $json = $c;
+            }
+            
+            self::setSessionCache($name, $json);
+            $_getCache[$name] = $json;
+            return $json;
+        } elseif (file_exists($cachefile)) {
             self::deleteCache($name);
+        }
+        return null;
+    }
+
+    public static function deleteCache($name) {
+        global $__getAVideoCache;
+        unset($__getAVideoCache);
+        $cachefile = self::getCacheFileName($name);
+        @unlink($cachefile);
+        self::deleteSessionCache($name);
+        ObjectYPT::deleteCacheFromPattern($name);
+    }
+
+    static function deleteCachePattern($pattern) {
+        global $__getAVideoCache;
+        unset($__getAVideoCache);
+        $tmpDir = self::getCacheDir();
+        $array = _glob($tmpDir, $pattern);
+        foreach ($array as $value) {
+            _error_log("Object::deleteCachePattern file [{$value}]");
+            @unlink($value);
+        }
+        _session_start();
+        foreach ($_SESSION['user']['sessionCache'] as $key => $value) {
+            if (preg_match($pattern, $key)) {
+                _error_log("Object::deleteCachePattern session [{$key}]");
+                $_SESSION['user']['sessionCache'][$key] = null;
+                unset($_SESSION['user']['sessionCache'][$key]);
+            }
         }
     }
 
-    static function deleteCache($name) {
-        $cachefile = self::getCacheFileName($name);
-        @unlink($cachefile);
-
-        self::deleteSessionCache($name);
-    }
-
-    static function deleteALLCache() {
+    public static function deleteALLCache() {
+        global $__getAVideoCache;
+        unset($__getAVideoCache);
         $tmpDir = self::getCacheDir();
         rrmdir($tmpDir);
         self::deleteAllSessionCache();
+        self::setLastDeleteALLCacheTime();
     }
 
-    static function getCacheDir() {
+    public static function getCacheDir($filename = '') {
+        global $_getCacheDir, $global;
+
+        if (!isset($_getCacheDir)) {
+            $_getCacheDir = array();
+        }
+
+        if (!empty($_getCacheDir[$filename])) {
+            return $_getCacheDir[$filename];
+        }
+
         $tmpDir = getTmpDir();
         $tmpDir = rtrim($tmpDir, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
         $tmpDir .= "YPTObjectCache" . DIRECTORY_SEPARATOR;
+
+        $filename = self::cleanCacheName($filename);
+        if (!empty($filename)) {
+            $tmpDir .= $filename . DIRECTORY_SEPARATOR;
+
+            $domain = getDomain();
+            $tmpDir .= $domain . DIRECTORY_SEPARATOR;
+
+            // make sure you separete http and https cache 
+            $protocol = isset($_SERVER["HTTPS"]) ? 'https' : 'http';
+            $tmpDir .= $protocol . DIRECTORY_SEPARATOR;
+            if (class_exists("User_Location")) {
+                $loc = User_Location::getThisUserLocation();
+                if (!empty($loc) && !empty($loc['country_code'])) {
+                    $tmpDir .= $loc['country_code'] . DIRECTORY_SEPARATOR;
+                }
+            }
+        }
+        
+        if (User::isLogged()) {
+            if(User::isAdmin()){
+                $tmpDir .= 'admin_'.md5("admin".$global['salt']).DIRECTORY_SEPARATOR;
+            }else{
+                $tmpDir .= 'user_'.md5("user".$global['salt']).DIRECTORY_SEPARATOR;
+            }
+        }else{
+            $tmpDir .= 'notlogged_'.md5("notlogged".$global['salt']).DIRECTORY_SEPARATOR;
+        }
+
         make_path($tmpDir);
-        if (!file_exists($tmpDir . "index.html")) {// to avoid search into the directory
+        if (!file_exists($tmpDir . "index.html") && is_writable($tmpDir)) {// to avoid search into the directory
             file_put_contents($tmpDir . "index.html", time());
         }
+
+        $_getCacheDir[$filename] = $tmpDir;
         return $tmpDir;
     }
 
-    static function getCacheFileName($name) {
+    public static function getCacheFileName($name) {
+        global $global;
+        $tmpDir = self::getCacheDir($name);
+        $uniqueHash = md5(__FILE__ . $global['salt']); // add salt for security reasons
+        return $tmpDir . $uniqueHash . '.cache';
+    }
+
+    public static function deleteCacheFromPattern($name) {
+        $tmpDir = getTmpDir();
         $name = self::cleanCacheName($name);
-        $tmpDir = self::getCacheDir();
-        $uniqueHash = md5(__FILE__);
-        return $tmpDir . DIRECTORY_SEPARATOR . $name . $uniqueHash;
+        $ignoreLocationDirectoryName = (strpos($name, DIRECTORY_SEPARATOR) !== false);
+        $filePattern = $tmpDir . DIRECTORY_SEPARATOR . $name;
+        foreach (glob("{$filePattern}*") as $filename) {
+            unlink($filename);
+        }
+        self::deleteSessionCache($name);
     }
 
     /**
@@ -341,58 +531,112 @@ abstract class ObjectYPT implements ObjectInterface {
      * @param type $name
      * @param type $value
      */
-    static function setSessionCache($name, $value) {
+    public static function setSessionCache($name, $value) {
         $name = self::cleanCacheName($name);
         _session_start();
-        $_SESSION['sessionCache'][$name]['value'] = json_encode($value);
-        $_SESSION['sessionCache'][$name]['time'] = time();
+        $_SESSION['user']['sessionCache'][$name]['value'] = json_encode($value);
+        $_SESSION['user']['sessionCache'][$name]['time'] = time();
+        if (empty($_SESSION['user']['sessionCache']['time'])) {
+            $_SESSION['user']['sessionCache']['time'] = time();
+        }
     }
 
     /**
-     * 
+     *
      * @param type $name
      * @param type $lifetime, if is = 0 it is unlimited
      * @return type
      */
-    static function getSessionCache($name, $lifetime = 60) {
+    public static function getSessionCache($name, $lifetime = 60) {
         $name = self::cleanCacheName($name);
         if (!empty($_GET['lifetime'])) {
             $lifetime = intval($_GET['lifetime']);
         }
-        if (!empty($_SESSION['sessionCache'][$name])) {
-            if ((empty($lifetime) || time() - $lifetime <= $_SESSION['sessionCache'][$name]['time'])) {
-                $c = $_SESSION['sessionCache'][$name]['value'];
-                return json_decode($c);
-            } else {
-                _session_start();
-                unset($_SESSION['sessionCache'][$name]);
+        if (!empty($_SESSION['user']['sessionCache'][$name])) {
+            if ((empty($lifetime) || time() - $lifetime <= $_SESSION['user']['sessionCache'][$name]['time'])) {
+                $c = $_SESSION['user']['sessionCache'][$name]['value'];
+                $json = json_decode($c);
+                if(is_string($json) && strtolower($json) === 'false'){
+                    $json = false;
+                }
+                return $json;
             }
+            _session_start();
+            unset($_SESSION['user']['sessionCache'][$name]);
         }
+        return null;
     }
 
-    static function deleteSessionCache($name) {
+    public static function clearSessionCache() {
+        unset($_SESSION['user']['sessionCache']);
+    }
+
+    private static function getLastDeleteALLCacheTimeFile() {
+        $tmpDir = getTmpDir();
+        $tmpDir = rtrim($tmpDir, DIRECTORY_SEPARATOR) . "/";
+        $tmpDir .= "lastDeleteALLCacheTime.cache";
+        return $tmpDir;
+    }
+
+    public static function setLastDeleteALLCacheTime() {
+        $file = self::getLastDeleteALLCacheTimeFile();
+        //_error_log("ObjectYPT::setLastDeleteALLCacheTime {$file}");
+        return file_put_contents($file, time());
+    }
+
+    public static function getLastDeleteALLCacheTime() {
+        global $getLastDeleteALLCacheTime;
+        if (empty($getLastDeleteALLCacheTime)) {
+            $getLastDeleteALLCacheTime = (int) @file_get_contents(self::getLastDeleteALLCacheTimeFile(), time());
+        }
+        return $getLastDeleteALLCacheTime;
+    }
+
+    public static function checkSessionCacheBasedOnLastDeleteALLCacheTime() {
+        /*
+          var_dump(
+          $session_var['time'],
+          self::getLastDeleteALLCacheTime(),
+          humanTiming($session_var['time']),
+          humanTiming(self::getLastDeleteALLCacheTime()),
+          $session_var['time'] <= self::getLastDeleteALLCacheTime());
+         *
+         */
+        if (empty($_SESSION['user']['sessionCache']['time']) || $_SESSION['user']['sessionCache']['time'] <= self::getLastDeleteALLCacheTime()) {
+            self::deleteAllSessionCache();
+            return false;
+        }
+        return true;
+    }
+
+    public static function deleteSessionCache($name) {
         $name = self::cleanCacheName($name);
         _session_start();
-        $_SESSION['sessionCache'][$name] = null;
-        unset($_SESSION['sessionCache'][$name]);
+        $_SESSION['user']['sessionCache'][$name] = null;
+        unset($_SESSION['user']['sessionCache'][$name]);
     }
 
-    static function deleteAllSessionCache() {
+    public static function deleteAllSessionCache() {
         _session_start();
-        unset($_SESSION['sessionCache']);
+        unset($_SESSION['user']['sessionCache']);
     }
 
-    function tableExists() {
+    public function tableExists() {
         return self::isTableInstalled();
     }
 
-    static function isTableInstalled($tableName = "") {
+    public static function isTableInstalled($tableName = "") {
         global $global, $tableExists;
         if (empty($tableName)) {
             $tableName = static::getTableName();
         }
+        if (empty($tableName)) {
+            return false;
+        }
         if (!isset($tableExists[$tableName])) {
-            $res = sqlDAL::readSql("SHOW TABLES LIKE '" . $tableName . "'");
+            $sql = "SHOW TABLES LIKE '" . $tableName . "'";
+            //_error_log("isTableInstalled: ({$sql})");
+            $res = sqlDAL::readSql($sql);
             $result = sqlDal::num_rows($res);
             sqlDAL::close($res);
             $tableExists[$tableName] = !empty($result);

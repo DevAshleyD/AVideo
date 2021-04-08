@@ -12,6 +12,9 @@ require_once $global['systemRootPath'] . 'plugin/Gallery/functions.php';
 session_write_close();
 $user_id = isChannel();
 $user = new User($user_id);
+if($user->getStatus()==='i'){
+    forbiddenPage(__("This user is inactive"));
+}
 $isMyChannel = $user_id == User::getId();
 AVideoPlugin::getChannel($user_id, $user);
 $channelFluidLayout = true;
@@ -26,13 +29,13 @@ $metaDescription = " Channel - {$_GET['channelName']}";
 <!DOCTYPE html>
 <html lang="<?php echo $_SESSION['language']; ?>">
     <head>
-        <title><?php echo $config->getWebSiteTitle(); ?> :: <?php echo __("Channel"); ?> :: <?php echo @$_GET['channelName'].getSEOComplement(); ?> </title>
+        <title><?php echo @$_GET['channelName'] . $config->getPageTitleSeparator() . __("Channel") . getSEOComplement() . $config->getPageTitleSeparator() . $config->getWebSiteTitle(); ?></title>
         <?php
         include $global['systemRootPath'] . 'view/include/head.php';
         include $global['systemRootPath'] . 'view/channelHead.php';
         ?>
     </head>
-    <body class="<?php echo $global['bodyClass']; ?>">
+    <body class="<?php echo $global['bodyClass']; ?> userChannel">
         <?php
         include $global['systemRootPath'] . 'view/include/navbar.php';
         ?>

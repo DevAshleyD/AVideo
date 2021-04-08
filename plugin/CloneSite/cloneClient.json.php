@@ -27,6 +27,20 @@ $log = new CloneLog();
 $log->add("Clone: Clone Start");
 
 $objClone = AVideoPlugin::getObjectDataIfEnabled("CloneSite");
+
+if (empty($objClone)) {
+    $resp->msg = "Your Clone Site Plugin is not enabled";
+    $log->add("Clone: {$resp->msg}");
+    die(json_encode($resp));
+}
+
+if (empty($objClone->cloneSiteURL)) {
+    $resp->msg = "Your Clone Site URL is empty, please click on the Edit parameters buttons and place an AVideo URL";
+    _error_log("{$resp->msg} (".json_encode($objClone).")");
+    $log->add("Clone: {$resp->msg}");
+    die(json_encode($resp));
+}
+
 $objClone->cloneSiteURL = rtrim($objClone->cloneSiteURL,"/").'/';
 $objCloneOriginal = $objClone;
 $argv[1] = preg_replace("/[^A-Za-z0-9 ]/", '', @$argv[1]);
@@ -40,16 +54,8 @@ if (empty($objClone) || empty($argv[1]) || $objClone->myKey !== $argv[1]) {
     }
 }
 
-
-
-if (empty($objClone->cloneSiteURL)) {
-    $resp->msg = "Your Clone Site URL is empty, please click on the Edit parameters buttons and place an AVideo URL";
-    $log->add("Clone: {$resp->msg}");
-    die(json_encode($resp));
-}
-
 $videosSite = "{$objClone->cloneSiteURL}videos/";
-$videosDir = "{$global['systemRootPath']}videos/";
+$videosDir = Video::getStoragePath()."";
 $clonesDir = "{$videosDir}cache/clones/";
 $photosDir = "{$videosDir}userPhoto/";
 $photosSite = "{$videosSite}userPhoto/";
@@ -64,7 +70,8 @@ if (!file_exists($photosDir)) {
 $url = $objClone->cloneSiteURL . "plugin/CloneSite/cloneServer.json.php?url=" . urlencode($global['webSiteRootURL']) . "&key={$objClone->myKey}&useRsync=" . intval($objClone->useRsync);
 // check if it respond
 $log->add("Clone (1 of {$totalSteps}): Asking the Server the database and the files");
-$content = url_get_contents($url);
+$content = url_get_contents($url, "", 3600, true);
+_error_log("Clone: url_get_contents($url) respond: ($content)");
 //var_dump($url, $content);exit;
 $json = json_decode($content);
 
@@ -156,7 +163,7 @@ if (empty($objClone->useRsync)) {
     if(empty($port)){
         $port = 22;
     }
-    $rsync = "sshpass -p '{password}' rsync -av -e 'ssh  -p {$port} -o StrictHostKeyChecking=no' --exclude '*.php' --exclude 'cache' --exclude '*.sql' --exclude '*.log' {$objClone->cloneSiteSSHUser}@{$objClone->cloneSiteSSHIP}:{$json->videosDir} {$global['systemRootPath']}videos/ --log-file='{$log->file}' ";
+    $rsync = "sshpass -p '{password}' rsync -av -e 'ssh  -p {$port} -o StrictHostKeyChecking=no' --exclude '*.php' --exclude 'cache' --exclude '*.sql' --exclude '*.log' {$objClone->cloneSiteSSHUser}@{$objClone->cloneSiteSSHIP}:{$json->videosDir} ". Video::getStoragePath()." --log-file='{$log->file}' ";
     $cmd = str_replace("{password}", $objClone->cloneSiteSSHPassword->value, $rsync);
     $log->add("Clone (4 of {$totalSteps}): execute rsync ({$rsync})");
     

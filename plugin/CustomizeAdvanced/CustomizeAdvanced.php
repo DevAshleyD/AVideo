@@ -5,6 +5,13 @@ require_once $global['systemRootPath'] . 'plugin/Plugin.abstract.php';
 
 class CustomizeAdvanced extends PluginAbstract {
 
+
+    public function getTags() {
+        return array(
+            PluginTags::$RECOMMENDED,
+            PluginTags::$FREE
+        );
+    }
     public function getDescription() {
         $txt = "Fine Tuning your AVideo";
         $help = "<br><small><a href='https://github.com/WWBN/AVideo/wiki/Advanced-Customization-Plugin' target='__blank'><i class='fas fa-question-circle'></i> Help</a></small>";
@@ -26,7 +33,7 @@ class CustomizeAdvanced extends PluginAbstract {
     public function getEmptyDataObject() {
         global $global;
         $obj = new stdClass();
-        $obj->logoMenuBarURL = $global['webSiteRootURL'];
+        $obj->logoMenuBarURL = "";
         $obj->encoderNetwork = "https://network.avideo.com/";
         $obj->useEncoderNetworkRecomendation = false;
         $obj->doNotShowEncoderNetwork = true;
@@ -50,10 +57,20 @@ class CustomizeAdvanced extends PluginAbstract {
         $obj->embedButtonLabel = "";
         $obj->embedCodeTemplate = '<div class="embed-responsive embed-responsive-16by9"><iframe width="640" height="360" style="max-width: 100%;max-height: 100%; border:none;" src="{embedURL}" frameborder="0" allowfullscreen="allowfullscreen" allow="autoplay" scrolling="no">iFrame is not supported!</iframe></div>';
         $obj->embedCodeTemplateObject = '<div class="embed-responsive embed-responsive-16by9"><object width="640" height="360"><param name="movie" value="{embedURL}"></param><param name="allowFullScreen" value="true"></param><param name="allowscriptaccess" value="always"></param><embed src="{embedURL}" allowscriptaccess="always" allowfullscreen="true" width="640" height="360"></embed></object></div>';
+        $obj->htmlCodeTemplate = '<a href="{permaLink}"><img src="{imgSRC}">{title}</a>';
+        $obj->BBCodeTemplate = '[url={permaLink}][img]{imgSRC}[/img]{title}[/url]';
         $obj->doNotShowEncoderHLS = false;
         $obj->doNotShowEncoderResolutionLow = false;
         $obj->doNotShowEncoderResolutionSD = false;
         $obj->doNotShowEncoderResolutionHD = false;
+        $obj->openEncoderInIFrame = false;
+        $obj->showOnlyEncoderAutomaticResolutions = true;
+        $obj->doNotShowEncoderAutomaticHLS = false;
+        $obj->doNotShowEncoderAutomaticMP4 = false;
+        $obj->doNotShowEncoderAutomaticWebm = false;
+        $obj->doNotShowEncoderAutomaticAudio = false;
+        $obj->doNotShowExtractAudio = false;
+        $obj->doNotShowCreateVideoSpectrum = false;
         $obj->doNotShowLeftMenuAudioAndVideoButtons = false;
         $obj->doNotShowWebsiteOnContactForm = false;
         $obj->doNotUseXsendFile = false;
@@ -63,9 +80,9 @@ class CustomizeAdvanced extends PluginAbstract {
         $obj->useVideoIDOnSEOLinks = true;
         $obj->disableAnimatedGif = false;
         $obj->removeBrowserChannelLinkFromMenu = false;
-        $obj->EnableWavesurfer = false;
         $obj->EnableMinifyJS = false;
         $obj->disableShareAndPlaylist = false;
+        $obj->disableShareOnly = false;
         $obj->disableEmailSharing = false;
         $obj->splitBulkEmailSend = 50;
         $obj->disableComments = false;
@@ -87,6 +104,7 @@ class CustomizeAdvanced extends PluginAbstract {
         $obj->signInOnRight = true;
         $obj->signInOnLeft = true;
         $obj->forceCategory = false;
+        $obj->showCategoryTopImages = true;
         $obj->autoPlayAjax = false;
 
         $plugins = Plugin::getAllEnabled();
@@ -102,6 +120,7 @@ class CustomizeAdvanced extends PluginAbstract {
             }
         }
 
+        $obj->disablePlayLink = false;
         $obj->disableHelpLeftMenu = false;
         $obj->disableAboutLeftMenu = false;
         $obj->disableContactLeftMenu = false;
@@ -113,8 +132,9 @@ class CustomizeAdvanced extends PluginAbstract {
         $obj->useFFMPEGToGenerateThumbs = false;
         $obj->thumbsWidthPortrait = 170;
         $obj->thumbsHeightPortrait = 250;
-        $obj->thumbsWidthLandscape = 250;
-        $obj->thumbsHeightLandscape = 140;
+        $obj->thumbsWidthLandscape = 640;
+        $obj->thumbsHeightLandscape = 360;
+        $obj->usePreloadLowResolutionImages = false;
         $obj->showImageDownloadOption = false;
         $obj->doNotDisplayViews = false;
         $obj->doNotDisplayLikes = false;
@@ -154,6 +174,7 @@ class CustomizeAdvanced extends PluginAbstract {
         $o->value = "";
         $obj->videoNotFoundText = $o;
         $obj->siteMapRowsLimit = 100;
+        $obj->siteMapUTF8Fix = false;
         $obj->showPrivateVideosOnSitemap = false;
         $obj->enableOldPassHashCheck = true;
         $obj->disableHTMLDescription = false;
@@ -169,23 +190,33 @@ class CustomizeAdvanced extends PluginAbstract {
         $obj->twitter_site = "@{$domain}";
         $obj->twitter_player = true;
         $obj->twitter_summary_large_image = false;
-        $obj->footerStyle = "position: fixed;bottom: 0;width: 100%; z-index: -1;";
+        $obj->footerStyle = "position: fixed;bottom: 0;width: 100%;";
+        $obj->disableVideoTags = false;
+        $obj->doNotAllowEncoderOverwriteStatus = false;
+        $obj->doNotAllowUpdateVideoId = false;
+        $obj->makeVideosIDHarderToGuess = false;
+        self::addDataObjectHelper('makeVideosIDHarderToGuess', 'Make the videos ID harder to guess', 'This will change the videos_id on the URL to a crypted value. this crypt user your $global[salt] (configuration.php), so make sure you keep it save in case you need to restore your site, otherwise all the shared links will be lost');
         
+        
+        
+        $o = new stdClass();
+        $o->type = DateTimeZone::listIdentifiers(DateTimeZone::ALL);
+        $o->value = 0;
+        $obj->timeZone = $o;
+        
+        
+        $obj->keywords = "AVideo, videos, live, movies";
         
         return $obj;
     }
 
     public function getHelp() {
         if (User::isAdmin()) {
-            return "<h2 id='CustomizeAdvanced help'>CustomizeAdvanced (admin)</h2><p>" . $this->getDescription() . "</p><table class='table'><tbody><tr><td>EnableWavesurfer</td><td>Enables the visualisation for audio. This will always download full audio first, so with big audio-files, you might better disable it.</td></tr><tr><td>commentsMaxLength</td><td>Maximum lenght for comments in videos</td></tr><tr><td>disableYoutubePlayerIntegration</td> <td>Disables the integrating of youtube-videos and just embed them.</td></tr><tr><td>EnableMinifyJS</td><td>Minify your JS. Clear videos/cache after changing this option.</td></tr></tbody></table>";
+            return "<h2 id='CustomizeAdvanced help'>CustomizeAdvanced (admin)</h2><p>" . $this->getDescription() . "</p>";
         }
         return "";
     }
-
-    public function getTags() {
-        return array('free', 'customization', 'buttons', 'resolutions');
-    }
-
+    
     public function getModeYouTube($videos_id) {
         global $global, $config;
         $obj = $this->getDataObject();
@@ -199,15 +230,16 @@ class CustomizeAdvanced extends PluginAbstract {
             }
         }
     }
+    
+    public function getEmbed($videos_id) {
+        return $this->getModeYouTube($videos_id);
+    }
 
     public function getFooterCode() {
         global $global;
 
         $obj = $this->getDataObject();
         $content = '';
-        if ($obj->disableNavBarInsideIframe) {
-            $content .= '<script>$(function () {if(inIframe()){$("#mainNavBar").fadeOut();}});</script>';
-        }
         if ($obj->autoHideNavbar && !isEmbed()) {
             $content .= '<script>$(function () {setTimeout(function(){$("#mainNavBar").autoHidingNavbar();},5000);});</script>';
             $content .= '<script>'. file_get_contents($global['systemRootPath'] . 'plugin/CustomizeAdvanced/autoHideNavbar.js').'</script>';
@@ -218,7 +250,6 @@ class CustomizeAdvanced extends PluginAbstract {
                     .file_get_contents($global['systemRootPath'] . 'plugin/CustomizeAdvanced/autoHideNavbarInSeconds.js')
                     . '</script>';
         }
-        $content .= '<script>'. file_get_contents($global['systemRootPath'] . 'plugin/CustomizeAdvanced/autoHideFooter.js').'</script>';
         return $content;
     }
 
@@ -254,16 +285,22 @@ class CustomizeAdvanced extends PluginAbstract {
     public function getVideosManagerListButton() {
         $btn = "";
         if (User::isAdmin()) {
-            $btn = '<button type="button" class="btn btn-default btn-light btn-sm btn-xs btn-block " onclick="updateDiskUsage(\' + row.id + \');" data-row-id="right"  data-toggle="tooltip" data-placement="left" title="Update Disk usage"><i class="fas fa-chart-line"></i> Update Disk Usage</button>';
-            $btn .= '<button type="button" class="btn btn-default btn-light btn-sm btn-xs btn-block " onclick="removeThumbs(\' + row.id + \');" data-row-id="right"  data-toggle="tooltip" data-placement="left" title="RemoveThumbs"><i class="fas fa-images"></i> Remove Thumbs</button>';
+            $btn = '<button type="button" class="btn btn-default btn-light btn-sm btn-xs btn-block " onclick="updateDiskUsage(\' + row.id + \');" data-row-id="right"  data-toggle="tooltip" data-placement="left" title="'. __("Update disk usage for this media") .'"><i class="fas fa-chart-line"></i> '. __("Update Disk Usage") .'</button>';
+            $btn .= '<button type="button" class="btn btn-default btn-light btn-sm btn-xs btn-block " onclick="removeThumbs(\' + row.id + \');" data-row-id="right"  data-toggle="tooltip" data-placement="left" title="'. __("Remove thumbs for this media") .'"><i class="fas fa-images"></i> '. __("Remove Thumbs") .'</button>';
         }
         return $btn;
     }
 
     public function getHeadCode() {
         global $global;
+        $obj = $this->getDataObject();
         $baseName = basename($_SERVER['REQUEST_URI']);
         $js = "";
+        if(empty($obj->autoPlayAjax)){
+            $js .= "<script>var autoPlayAjax=false;</script>";
+        }else{
+            $js .= "<script>var autoPlayAjax=true;</script>";
+        }
         if ($baseName === 'mvideos') {
             $js .= "<script>function updateDiskUsage(videos_id){
                                     modal.showPleaseWait();

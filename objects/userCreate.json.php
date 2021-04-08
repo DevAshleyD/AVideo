@@ -1,23 +1,26 @@
 <?php
 
 header('Access-Control-Allow-Origin: *');
-header("Access-Control-Allow-Headers: Content-Type");
+header('Access-Control-Allow-Headers: Content-Type');
 header('Content-Type: application/json');
 
 global $global, $config;
+
 if (!isset($global['systemRootPath'])) {
     require_once '../videos/configuration.php';
 }
-if(!empty($_GET['PHPSESSID'])){
+if (!empty($_GET['PHPSESSID'])) {
     session_write_close();
     session_id($_GET['PHPSESSID']);
     _error_log("userCreate.json: session_id changed to ". $_GET['PHPSESSID']);
     session_start();
 }
+
 require_once $global['systemRootPath'] . 'objects/user.php';
-// gettig the mobile submited value
+
+// Getting the mobile submitted value
 $inputJSON = url_get_contents('php://input');
-$input = json_decode($inputJSON, TRUE); //convert JSON into array
+$input = json_decode($inputJSON, true); //convert JSON into array
 if (!empty($input)) {
     foreach ($input as $key => $value) {
         $_POST[$key] = $value;
@@ -65,7 +68,6 @@ if (empty($_POST['user']) || empty($_POST['pass']) || empty($_POST['email']) || 
     die(json_encode($obj));
 }
 
-
 if (!empty($_POST['email']) && !filter_var($_POST['email'], FILTER_VALIDATE_EMAIL)) {
     $obj->error = __("Invalid Email");
     die(json_encode($obj));
@@ -82,6 +84,10 @@ $user->setCanUpload($config->getAuthCanUploadVideos());
 $users_id = $user->save();
 
 if (!empty($users_id)) {
+    $cu = AVideoPlugin::loadPluginIfEnabled('CustomizeUser');
+    if (!empty($cu)) {
+        CustomizeUser::setCanShareVideosFromUser($users_id, true);
+    }
     if (!empty($advancedCustomUser->userDefaultUserGroup->value)) { // for new users use the default usergroup
         UserGroups::updateUserGroups($users_id, array($advancedCustomUser->userDefaultUserGroup->value), true);
     }

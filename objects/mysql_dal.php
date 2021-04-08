@@ -53,7 +53,7 @@ class sqlDAL {
             if (substr(trim($line), -1, 1) == ';') {
                 // Perform the query
                 if (!$global['mysqli']->query($templine)) {
-                    _error_log('sqlDAL::executeFile '.$filename.' Error performing query \'<strong>' . $templine . '\': ' . $global['mysqli']->error . '<br /><br />', AVideoLog::$ERROR);
+                    _error_log('sqlDAL::executeFile ' . $filename . ' Error performing query \'<strong>' . $templine . '\': ' . $global['mysqli']->error . '<br /><br />', AVideoLog::$ERROR);
                 }
                 // Reset temp variable to empty
                 $templine = '';
@@ -63,7 +63,7 @@ class sqlDAL {
 
     /*
      * For Sql like INSERT and UPDATE. The special point about this method: You do not need to close it (more direct).
-     * @param string $preparedStatement  The Sql-command 
+     * @param string $preparedStatement  The Sql-command
      * @param string $formats            i=int,d=doube,s=string,b=blob (http://www.php.net/manual/en/mysqli-stmt.bind-param.php)
      * @param array  $values             A array, containing the values for the prepared statement.
      * @return boolean                   true on success, false on fail
@@ -81,16 +81,16 @@ class sqlDAL {
                     $audit->exec(@$debug[1]['function'], @$debug[1]['class'], $preparedStatement, $formats, json_encode($values), User::getId());
                 } catch (Exception $exc) {
                     echo log_error($exc->getTraceAsString());
-                }  
+                }
             }
         }
 
         if (!($stmt = $global['mysqli']->prepare($preparedStatement))) {
-            log_error("[sqlDAL::writeSql] Prepare failed: (" . $global['mysqli']->errno . ") " . $global['mysqli']->error . "<br>\n{$preparedStatement}");
+            log_error("[sqlDAL::writeSql] Prepare failed: (" . $global['mysqli']->errno . ") " . $global['mysqli']->error . " ({$preparedStatement})");
             return false;
         }
         if (!sqlDAL::eval_mysql_bind($stmt, $formats, $values)) {
-            log_error("[sqlDAL::writeSql]  eval_mysql_bind failed: values and params in stmt don't match <br>\r\n{$preparedStatement} with formats {$formats}");
+            log_error("[sqlDAL::writeSql]  eval_mysql_bind failed: values and params in stmt don't match ({$preparedStatement}) with formats ({$formats})");
             return false;
         }
         $stmt->execute();
@@ -106,7 +106,7 @@ class sqlDAL {
 
     /*
      * For Sql like SELECT. This method needs to be closed anyway. If you start another readSql, while the old is open, it will fail.
-     * @param string $preparedStatement  The Sql-command 
+     * @param string $preparedStatement  The Sql-command
      * @param string $formats            i=int,d=doube,s=string,b=blob (http://www.php.net/manual/en/mysqli-stmt.bind-param.php)
      * @param array  $values             A array, containing the values for the prepared statement.
      * @return Object                    Depend if mysqlnd is active or not, a object, but always false on fail
@@ -130,15 +130,25 @@ class sqlDAL {
                 // When not cached
 
                 $readSqlCached[$crc] = "false";
+                _mysql_connect();
+                
                 if (!($stmt = $global['mysqli']->prepare($preparedStatement))) {
-                    log_error("[sqlDAL::readSql] (mysqlnd) Prepare failed: (" . $global['mysqli']->errno . ") " . $global['mysqli']->error . "<br>\n{$preparedStatement}");
-                    return false;
+                    log_error("[sqlDAL::readSql] (mysqlnd) Prepare failed: (" . $global['mysqli']->errno . ") " . $global['mysqli']->error . " ({$preparedStatement}) - format=({$formats}) values=" . json_encode($values));
+                    //log_error("[sqlDAL::readSql] trying close and reconnect");
+                    _mysql_close();
+                    _mysql_connect();
+                    if (!($stmt = $global['mysqli']->prepare($preparedStatement))) {
+                        log_error("[sqlDAL::readSql] (mysqlnd) Prepare failed again return false");
+                        return false;
+                    }else{
+                        log_error("[sqlDAL::readSql] SUCCESS close and reconnect works!");
+                    }
                 }
                 if (!sqlDAL::eval_mysql_bind($stmt, $formats, $values)) {
-                    log_error("[sqlDAL::readSql] (mysqlnd) eval_mysql_bind failed: values and params in stmt don't match <br>\r\n{$preparedStatement} with formats {$formats}");
+                    log_error("[sqlDAL::readSql] (mysqlnd) eval_mysql_bind failed: values and params in stmt don't match {$preparedStatement} with formats {$formats}");
                     return false;
                 }
-                $TimeLog = "[$preparedStatement], $formats, ". json_encode($values).", $refreshCache";
+                $TimeLog = "[$preparedStatement], $formats, " . json_encode($values) . ", $refreshCache";
                 TimeLogStart($TimeLog);
                 $stmt->execute();
                 $readSqlCached[$crc] = $stmt->get_result();
@@ -161,7 +171,7 @@ class sqlDAL {
                 //log_error("set dataseek to 0");
                 // increase a counter for the saved queries.
                 if (isset($_SESSION['savedQuerys'])) {
-                    $_SESSION['savedQuerys'] ++;
+                    $_SESSION['savedQuerys']++;
                 }
             } else {
                 $readSqlCached[$crc] = "false";
@@ -169,14 +179,14 @@ class sqlDAL {
 
             //
             // if ($readSqlCached[$crc] == "false") {
-            // add this in case the cache fail 
+            // add this in case the cache fail
             // ->lenghts seems to be always NULL.. fix: $readSqlCached[$crc]->data_seek(0); above
             //if("SELECT * FROM configurations WHERE id = 1 LIMIT 1"==$preparedStatement){
             //  var_dump($readSqlCached[$crc]);
             //}
             if ($readSqlCached[$crc] != "false") {
                 if (is_null($readSqlCached[$crc]->lengths) && !$refreshCache && $readSqlCached[$crc]->num_rows == 0 && $readSqlCached[$crc]->field_count == 0) {
-                    log_error("[sqlDAL::readSql] (mysqlnd) Something was going wrong, re-get the query. <br>\r\n{$preparedStatement} {$readSqlCached[$crc]->num_rows}");
+                    log_error("[sqlDAL::readSql] (mysqlnd) Something was going wrong, re-get the query. {$preparedStatement} {$readSqlCached[$crc]->num_rows}");
                     return self::readSql($preparedStatement, $formats, $values, true);
                 }
             } else {
@@ -188,12 +198,12 @@ class sqlDAL {
             // Mysqlnd-fallback
 
             if (!($stmt = $global['mysqli']->prepare($preparedStatement))) {
-                log_error("[sqlDAL::readSql] (no mysqlnd) Prepare failed: (" . $global['mysqli']->errno . ") " . $global['mysqli']->error . "<br>\n{$preparedStatement}");
+                log_error("[sqlDAL::readSql] (no mysqlnd) Prepare failed: (" . $global['mysqli']->errno . ") " . $global['mysqli']->error . " ({$preparedStatement})");
                 return false;
             }
 
             if (!sqlDAL::eval_mysql_bind($stmt, $formats, $values)) {
-                log_error("[sqlDAL::readSql] (no mysqlnd) eval_mysql_bind failed: values and params in stmt don't match <br>\r\n{$preparedStatement} with formats {$formats}");
+                log_error("[sqlDAL::readSql] (no mysqlnd) eval_mysql_bind failed: values and params in stmt don't match {$preparedStatement} with formats {$formats}");
                 return false;
             }
 
@@ -218,7 +228,9 @@ class sqlDAL {
     static function close($result) {
         global $disableMysqlNdMethods, $global;
         if ((!function_exists('mysqli_fetch_all')) || ($disableMysqlNdMethods != false)) {
-            $result->stmt->close();
+            if(!empty($result->stmt)){
+                $result->stmt->close();
+            }
         }
     }
 
@@ -277,7 +289,7 @@ class sqlDAL {
     }
 
     /*
-     * Make a single assoc fetch 
+     * Make a single assoc fetch
      * @param Object $result A object from sqlDAL::readSql
      * @return int           A single row in a assoc array
      */
@@ -321,7 +333,7 @@ class sqlDAL {
     }
 
     /*
-     * Make a single fetch 
+     * Make a single fetch
      * @param Object $result A object from sqlDAL::readSql
      * @return int           A single row in a array
      */
@@ -359,6 +371,9 @@ class sqlDAL {
         $metadata = mysqli_stmt_result_metadata($stmt);
         $ret = new iimysqli_result;
         $field_array = array();
+        if (!$metadata) {
+            die("Execute query error, because: {$stmt->error}");
+        }
         $tmpFields = $metadata->fetch_fields();
         $i = 0;
         foreach ($tmpFields as $f) {
@@ -420,7 +435,7 @@ function log_error($err) {
     if (!empty($global['debug'])) {
         echo $err;
     }
-    _error_log(print_r(debug_backtrace(), true), AVideoLog::$ERROR);
+    _error_log("MySQL ERROR: ".json_encode(debug_backtrace()), AVideoLog::$ERROR);
     _error_log($err, AVideoLog::$ERROR);
 }
 

@@ -1,4 +1,5 @@
 <?php
+$isFirstPage = 1;
 include $global['systemRootPath'] . 'plugin/Gallery/view/topLogic.php';
 ?>
 <!DOCTYPE html>
@@ -8,7 +9,6 @@ include $global['systemRootPath'] . 'plugin/Gallery/view/topLogic.php';
             echo $siteTitle;
             ?></title>
         <?php include $global['systemRootPath'] . 'view/include/head.php'; ?>
-        <script src="<?php echo $global['webSiteRootURL']; ?>view/js/infinite-scroll.pkgd.min.js" type="text/javascript"></script>
     </head>
 
     <body class="<?php echo $global['bodyClass']; ?>">
@@ -17,15 +17,16 @@ include $global['systemRootPath'] . 'plugin/Gallery/view/topLogic.php';
             <div class="row text-center" style="padding: 10px;">
                 <?php echo getAdsLeaderBoardTop(); ?>
             </div>
-            <div class="col-sm-10 col-sm-offset-1 list-group-item">
+            <div class="col-lg-10 col-lg-offset-1 list-group-item addWidthOnMenuOpen">
                 <?php
-                    include $global['systemRootPath'] . 'plugin/Gallery/view/mainArea.php';
+                include $global['systemRootPath'] . 'view/include/categoryTop.php';
+                include $global['systemRootPath'] . 'plugin/Gallery/view/mainArea.php';
                 ?>
             </div>
         </div>
-                <?php
-                    include $global['systemRootPath'] . 'plugin/Gallery/view/footer.php';
-                ?>
+        <?php
+        include $global['systemRootPath'] . 'plugin/Gallery/view/footer.php';
+        ?>
     </body>
 </html>
-<?php include $global['systemRootPath'] . 'objects/include_end.php'; ?>
+<?php include_once $global['systemRootPath'] . 'objects/include_end.php'; ?>

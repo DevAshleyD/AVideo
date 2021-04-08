@@ -9,11 +9,11 @@ $count = 1;
 <!DOCTYPE html>
 <html lang="<?php echo $_SESSION['language']; ?>">
     <head>
-        <title><?php
-            echo $siteTitle;
-            ?></title>
+        <?php 
+        echo getHTMLTitle( $siteTitle);
+        ?>
         <?php include $global['systemRootPath'] . 'view/include/head.php'; ?>
-        <script src="<?php echo $global['webSiteRootURL']; ?>view/js/infinite-scroll.pkgd.min.js" type="text/javascript"></script>
+        <script src="<?php echo getCDN(); ?>view/js/infinite-scroll.pkgd.min.js" type="text/javascript"></script>
     </head>
 
     <body class="<?php echo $global['bodyClass']; ?>">

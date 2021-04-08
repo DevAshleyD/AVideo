@@ -18,7 +18,7 @@ if (empty($video['id'])) {
                     buttons: true,
                     dangerMode: true,
                 })
-                        .then((willDelete) => {
+                        .then(function(willDelete) {
                             if (willDelete) {
 
                                 modal.showPleaseWait();
@@ -35,7 +35,7 @@ if (empty($video['id'])) {
                                                 avideoAlert("<?php echo __("Thanks"); ?>", response.msg, "success");
                                             }
                                         }, 500);
-                                        //                                  
+                                        //
                                     }
                                 });
 

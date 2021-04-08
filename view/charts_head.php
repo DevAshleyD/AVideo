@@ -86,7 +86,7 @@ if ($config->getAuthCanViewChart() == 0) {
         $times[__LINE__] = microtime(true) - $start;
         $start = microtime(true);
     } else {
-        die("403 - You have no access here!");
+        forbiddenPage("You have no access here!");
     }
 }
 $labelToday = array();
@@ -146,8 +146,8 @@ foreach ($times as $key => $value) {
 }
 ?>
 -->
-<script src="<?php echo $global['webSiteRootURL']; ?>view/js/Chart.bundle.min.js"></script>
-<link rel="stylesheet" type="text/css" href="<?php echo $global['webSiteRootURL']; ?>view/css/DataTables/datatables.min.css"/>
+<script src="<?php echo getCDN(); ?>view/js/Chart.bundle.min.js"></script>
+<link rel="stylesheet" type="text/css" href="<?php echo getCDN(); ?>view/css/DataTables/datatables.min.css"/>
 <style>
     /* Custom Colored Panels */
     .dashboard .panel-heading {

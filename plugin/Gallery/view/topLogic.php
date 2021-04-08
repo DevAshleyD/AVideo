@@ -8,7 +8,7 @@ require_once $global['systemRootPath'] . 'objects/functions.php';
 require_once $global['systemRootPath'] . 'plugin/Gallery/functions.php';
 require_once $global['systemRootPath'] . 'objects/subscribe.php';
 
-$siteTitle = $config->getWebSiteTitle();
+$siteTitle = array();
 
 $obj = AVideoPlugin::getObjectData("Gallery");
 if (!empty($_GET['type'])) {
@@ -22,21 +22,11 @@ if (!empty($_GET['type'])) {
 }
 require_once $global['systemRootPath'] . 'objects/category.php';
 $currentCat;
-$currentCatType;
 if (!empty($_GET['catName'])) {
     $currentCat = Category::getCategoryByName($_GET['catName']);
-    $currentCatType = Category::getCategoryType($currentCat['id']);
-    $siteTitle = "{$currentCat['name']}";
+    array_push($siteTitle, $currentCat['name']);
 }
-if ((empty($_GET['type'])) && (!empty($currentCatType))) {
-    if ($currentCatType['type'] == "1") {
-        $_SESSION['type'] = "audio";
-    } else if ($currentCatType['type'] == "2") {
-        $_SESSION['type'] = "video";
-    } else {
-        unset($_SESSION['type']);
-    }
-}
+
 require_once $global['systemRootPath'] . 'objects/video.php';
 $orderString = "";
 if ($obj->sortReverseable) {
@@ -61,20 +51,37 @@ $total = 0;
 $totalPages = 0;
 $url = '';
 $args = '';
-if (strpos($_SERVER['REQUEST_URI'], "?") != false) {
-    $args = substr($_SERVER['REQUEST_URI'], strpos($_SERVER['REQUEST_URI'], "?"), strlen($_SERVER['REQUEST_URI']));
-}
-if (strpos($_SERVER['REQUEST_URI'], "/cat/") === false) {
-    $url = $global['webSiteRootURL'] . "page/";
+$metaDescription = "";
+if(!empty($video)){
+    if (strpos($_SERVER['REQUEST_URI'], "?") != false) {
+        $args = substr($_SERVER['REQUEST_URI'], strpos($_SERVER['REQUEST_URI'], "?"), strlen($_SERVER['REQUEST_URI']));
+    }
+    if (strpos($_SERVER['REQUEST_URI'], "/cat/") === false) {
+        $url = $global['webSiteRootURL'] . "page/";
+    } else {
+        $url = $global['webSiteRootURL'] . "cat/" . $video['clean_category'] . "/page/";
+    }
+    $contentSearchFound = false;
+	
+	array_push($siteTitle, __("Home"));
+	
+	// don't add a prefix for SEO, it's already handled here below by the implode() func	
+	$seoComplement = getSEOComplement(array(
+		"addAutoPrefix" => false,
+		"addCategory" => false
+	));
+	if (!empty($seoComplement)) {
+		array_push($siteTitle, $seoComplement);
+	}
+
+	$metaDescription = $video['id'];
 } else {
-    $url = $global['webSiteRootURL'] . "cat/" . $video['clean_category'] . "/page/";
+	array_push($siteTitle, __("Video Not Available"));
+	array_push($siteTitle, __("Home"));
+	
+	$metaDescription = __("Video Not Available");
 }
-$contentSearchFound = false;
-// for SEO to not rise an error of duplicated title or description of same pages with and without last slash
-$siteTitle .= getSEOComplement();
-$metaDescription = " ".$video['id'];
-// make sure the www has a different title and description than non www
-if(strrpos($_SERVER['HTTP_HOST'], 'www.')=== false){
-    $siteTitle .= ": ".__("Home");
-    $metaDescription .= ": ".__("Home");
-}
+array_push($siteTitle, $config->getWebSiteTitle());
+$metaDescription .= $config->getPageTitleSeparator() . __("Home");
+
+$siteTitle = implode($config->getPageTitleSeparator(), $siteTitle);

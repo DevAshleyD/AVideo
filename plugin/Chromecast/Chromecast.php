@@ -5,6 +5,11 @@ require_once $global['systemRootPath'] . 'plugin/Plugin.abstract.php';
 
 class Chromecast extends PluginAbstract {
 
+    public function getTags() {
+        return array(
+            PluginTags::$FREE
+        );
+    }
     public function getDescription() {
         return "A plugin that adds a button to the control bar which will cast videos to a Chromecast.";
     }
@@ -25,12 +30,8 @@ class Chromecast extends PluginAbstract {
     public function getHeadCode() {
         global $global;
         $css = "";
-        if (!empty($_GET['videoName'])) {
-            $video = Video::getVideoFromCleanTitle($_GET['videoName']);
-            if($video['type']=='embed'){
-                return '';
-            }
-            $css .= '<link href="' . $global['webSiteRootURL'] . 'plugin/Chromecast/videojs-chromecast/silvermine-videojs-chromecast.css" rel="stylesheet" type="text/css"/>';
+        if (isVideo()) {
+            $css .= '<link href="' .getCDN() . 'plugin/Chromecast/videojs-chromecast/silvermine-videojs-chromecast.css" rel="stylesheet" type="text/css"/>';
             $css .= "<style>.vjs-chromecast-button .vjs-icon-placeholder {width: 20px;height: 20px;</style>";
         }
         return $css;
@@ -38,11 +39,7 @@ class Chromecast extends PluginAbstract {
 
     public function getFooterCode() {
         global $global;
-        if (!empty($_GET['videoName'])) {
-            $video = Video::getVideoFromCleanTitle($_GET['videoName']);
-            if($video['type']=='embed'){
-                return '';
-            }
+        if (isVideoOrAudioNotEmbed()) {
             include $global['systemRootPath'] . 'plugin/Chromecast/footer.php';
         }
     }

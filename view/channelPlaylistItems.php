@@ -1,49 +1,56 @@
+<?php
+global $global, $config, $isChannel;
+$isChannel = 1; // still workaround, for gallery-functions, please let it there.
+if (!isset($global['systemRootPath'])) {
+    require_once '../videos/configuration.php';
+}
+require_once $global['systemRootPath'] . 'objects/user.php';
+require_once $global['systemRootPath'] . 'objects/video.php';
+require_once $global['systemRootPath'] . 'objects/playlist.php';
+
+if (empty($_GET['channelName'])) {
+    if (User::isLogged()) {
+        $_GET['user_id'] = User::getId();
+    } else {
+        return false;
+    }
+} else {
+    $user = User::getChannelOwner($_GET['channelName']);
+    if (!empty($user)) {
+        $_GET['user_id'] = $user['id'];
+    } else {
+        $_GET['user_id'] = $_GET['channelName'];
+    }
+}
+$user_id = $_GET['user_id'];
+
+$timeLog2 = __FILE__ . " - channelPlayList: {$_GET['channelName']}";
+TimeLogStart($timeLog2);
+
+$publicOnly = true;
+$isMyChannel = false;
+if (User::isLogged() && $user_id == User::getId()) {
+    $publicOnly = false;
+    $isMyChannel = true;
+}
+if (empty($_GET['current'])) {
+    $_POST['current'] = 1;
+} else {
+    $_POST['current'] = intval($_GET['current']);
+}
+$_REQUEST['rowCount'] = 4;
+$playlists = PlayList::getAllFromUser($user_id, $publicOnly);
+$current = $_POST['current'];
+unset($_POST['current']);
+?>
 <div class="programsContainerItem">
     <?php
-    global $global, $config, $isChannel;
-    $isChannel = 1; // still workaround, for gallery-functions, please let it there.
-    if (!isset($global['systemRootPath'])) {
-        require_once '../videos/configuration.php';
-    }
-    require_once $global['systemRootPath'] . 'objects/user.php';
-    require_once $global['systemRootPath'] . 'objects/video.php';
-    require_once $global['systemRootPath'] . 'objects/playlist.php';
-
-    if (empty($_GET['channelName'])) {
-        if (User::isLogged()) {
-            $_GET['user_id'] = User::getId();
-        } else {
-            return false;
-        }
-    } else {
-        $user = User::getChannelOwner($_GET['channelName']);
-        if (!empty($user)) {
-            $_GET['user_id'] = $user['id'];
-        } else {
-            $_GET['user_id'] = $_GET['channelName'];
-        }
-    }
-    $user_id = $_GET['user_id'];
-
-    $timeLog2 = __FILE__ . " - channelPlayList: {$_GET['channelName']}";
-    TimeLogStart($timeLog2);
-
-    $publicOnly = true;
-    $isMyChannel = false;
-    if (User::isLogged() && $user_id == User::getId()) {
-        $publicOnly = false;
-        $isMyChannel = true;
-    }
-    if (empty($_GET['current'])) {
-        $_POST['current'] = 1;
-    } else {
-        $_POST['current'] = intval($_GET['current']);
-    }
-    $_REQUEST['rowCount'] = 4;
-    $playlists = PlayList::getAllFromUser($user_id, $publicOnly);
-    $current = $_POST['current'];
-    unset($_POST['current']);
     if (empty($playlists)) {
+        
+        if($current==1){
+            echo "<div class='alert alert-warning'><i class=\"fas fa-exclamation-triangle\"></i> ".__('Sorry you do not have anything available')."</div>";
+        }
+        
         die("</div>");
     }
     $playListsObj = AVideoPlugin::getObjectData("PlayLists");
@@ -52,6 +59,7 @@
     unset($_GET['channelName']);
     $startC = microtime(true);
     TimeLogEnd($timeLog2, __LINE__);
+
     $countSuccess = 0;
     $get = array();
     if (!empty($_GET['channelName'])) {
@@ -82,6 +90,12 @@
         } else {
             $videosP = Video::getAllVideos("viewable", false, true, $videosArrayId, false, true);
         }//var_dump($videosArrayId, $videosP); exit;
+
+        $totalDuration = 0;
+        foreach ($videosP as $value) {
+            $totalDuration += durationToSeconds($value['duration']);
+        }
+
         $_REQUEST['rowCount'] = $rowCount;
         @$timesC[__LINE__] += microtime(true) - $startC;
         $startC = microtime(true);
@@ -101,7 +115,7 @@
             <div class="panel-heading">
 
                 <strong style="font-size: 1.1em;" class="playlistName">
-                    <?php echo $playlist['name']; ?> 
+                    <?php echo __($playlist['name']); ?> (<?php echo secondsToDuration($totalDuration); ?>)
                 </strong>
 
                 <?php
@@ -111,10 +125,12 @@
                     <a href="<?php echo $link; ?>" class="btn btn-xs btn-default playAll hrefLink" ><span class="fa fa-play"></span> <?php echo __("Play All"); ?></a><?php echo $playListButtons; ?>
                     <?php
                 }
+                echo PlayLists::getPlayLiveButton($playlist['id']);
                 ?>
-                <div class="pull-right btn-group">
+                <div class="pull-right btn-group" style="display: inline-flex;">
                     <?php
                     if ($isMyChannel) {
+                        echo PlayLists::getShowOnTVSwitch($playlist['id']);
                         if ($playlist['status'] != "favorite" && $playlist['status'] != "watch_later") {
                             if (AVideoPlugin::isEnabledByName("PlayLists")) {
                                 ?>
@@ -131,10 +147,6 @@
                             <div id="seriePlaylistModal" class="modal fade" tabindex="-1" role="dialog" >
                                 <div class="modal-dialog" role="document" style="width: 90%; margin: auto;">
                                     <div class="modal-content">
-                                        <div class="modal-header">
-                                            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-                                            <h4 class="modal-title"><?php echo __("Serie"); ?></h4>
-                                        </div>
                                         <div class="modal-body">
                                             <iframe style="width: 100%; height: 80vh;" src="about:blank">
 
@@ -145,13 +157,13 @@
                             </div><!-- /.modal -->
                             <script>
                                 $(function () {
-                                $('.seriePlaylist').click(function () {
-                                $($('#seriePlaylistModal').find('iframe')[0]).attr('src', 'about:blank');
-                                var playlist_id = $(this).attr('playlist_id');
-                                $($('#seriePlaylistModal').find('iframe')[0]).attr('src', '<?php echo $global['webSiteRootURL']; ?>plugin/PlayLists/playListToSerie.php?playlist_id=' + playlist_id);
-                                $('#seriePlaylistModal').modal();
-                                //$('#seriePlaylistModal').modal('hide');
-                                });
+                                    $('.seriePlaylist').click(function () {
+                                        $($('#seriePlaylistModal').find('iframe')[0]).attr('src', 'about:blank');
+                                        var playlist_id = $(this).attr('playlist_id');
+                                        $($('#seriePlaylistModal').find('iframe')[0]).attr('src', '<?php echo $global['webSiteRootURL']; ?>plugin/PlayLists/playListToSerie.php?playlist_id=' + playlist_id);
+                                        $('#seriePlaylistModal').modal();
+                                        //$('#seriePlaylistModal').modal('hide');
+                                    });
                                 });
                             </script>
 
@@ -199,7 +211,7 @@
                         ?>
                         <div style="overflow: hidden;">
                             <div style="display: flex; margin-bottom: 10px;">
-                                <div style="margin-right: 5px;">
+                                <div style="margin-right: 5px; min-width: 30%;" >
                                     <img src="<?php echo $poster; ?>" alt="<?php echo $serie['title']; ?>" class="img img-responsive" style="max-height: 200px;" />
                                 </div>  
                                 <div>
@@ -236,17 +248,17 @@
                                         if (!empty($serie['trailer1'])) {
                                             ?>
                                             <a href="#" class="btn btn-xs btn-warning" onclick="$(this).removeAttr('href'); $('#serie<?php echo $serie['id']; ?> img').fadeOut(); $('<iframe>', {
-                                                                src: '<?php echo parseVideos($serie['trailer1'], 1, 0, 0, 0, 1, 0, 'fill'); ?>',
+                                                                        src: '<?php echo parseVideos($serie['trailer1'], 1, 0, 0, 0, 1, 0, 'fill'); ?>',
                                                                         id: 'myFrame<?php echo $serie['id']; ?>',
                                                                         allow: 'autoplay',
                                                                         frameborder: 0,
                                                                         height: 200,
                                                                         width: '100%',
                                                                         scrolling: 'no'
-                                                                }).appendTo('#serie<?php echo $serie['id']; ?>');
-                                                                $(this).removeAttr('onclick');
-                                                                $(this).fadeOut();
-                                                                return false;">
+                                                                    }).appendTo('#serie<?php echo $serie['id']; ?>');
+                                                                    $(this).removeAttr('onclick');
+                                                                    $(this).fadeOut();
+                                                                    return false;">
                                                 <span class="fa fa-film"></span> 
                                                 <span class="hidden-xs"><?php echo __("Trailer"); ?></span>
                                             </a>
@@ -266,6 +278,7 @@
                     <div class="clearfix"></div>
                     <?php
                     $count = 0;
+                    $_REQUEST['site'] = get_domain($global['webSiteRootURL']);
                     foreach ($videosP as $value) {
                         // make sure the video exists
                         if (empty($value['created'])) {
@@ -315,14 +328,15 @@
                                         }
                                         ?>
 
-                                        <button onclick="addVideoToPlayList(<?php echo $value['id']; ?>, false, <?php echo $value['watchLaterId']; ?>); return false;" class="btn btn-dark btn-xs watchLaterBtnAdded watchLaterBtnAdded<?php echo $value['id']; ?>" title="<?php echo __("Added On Watch Later"); ?>" style="color: #4285f4;<?php echo $watchLaterBtnAddedStyle; ?>" ><i class="fas fa-check"></i></button> 
+                                        <button onclick="addVideoToPlayList(<?php echo $value['id']; ?>, false, <?php echo $value['watchLaterId']; ?>);
+                                                                return false;" class="btn btn-dark btn-xs watchLaterBtnAdded watchLaterBtnAdded<?php echo $value['id']; ?>" title="<?php echo __("Added On Watch Later"); ?>" style="color: #4285f4;<?php echo $watchLaterBtnAddedStyle; ?>" ><i class="fas fa-check"></i></button> 
                                         <button onclick="addVideoToPlayList(<?php echo $value['id']; ?>, true, <?php echo $value['watchLaterId']; ?>);
-                                                            return false;" class="btn btn-dark btn-xs watchLaterBtn watchLaterBtn<?php echo $value['id']; ?>" title="<?php echo __("Watch Later"); ?>" style="<?php echo $watchLaterBtnStyle; ?>" ><i class="fas fa-clock"></i></button>
+                                                                return false;" class="btn btn-dark btn-xs watchLaterBtn watchLaterBtn<?php echo $value['id']; ?>" title="<?php echo __("Watch Later"); ?>" style="<?php echo $watchLaterBtnStyle; ?>" ><i class="fas fa-clock"></i></button>
                                         <br>
                                         <button onclick="addVideoToPlayList(<?php echo $value['id']; ?>, false, <?php echo $value['favoriteId']; ?>);
-                                                            return false;" class="btn btn-dark btn-xs favoriteBtnAdded favoriteBtnAdded<?php echo $value['id']; ?>" title="<?php echo __("Added On Favorite"); ?>" style="color: #4285f4; <?php echo $favoriteBtnAddedStyle; ?>"><i class="fas fa-check"></i></button>  
+                                                                return false;" class="btn btn-dark btn-xs favoriteBtnAdded favoriteBtnAdded<?php echo $value['id']; ?>" title="<?php echo __("Added On Favorite"); ?>" style="color: #4285f4; <?php echo $favoriteBtnAddedStyle; ?>"><i class="fas fa-check"></i></button>  
                                         <button onclick="addVideoToPlayList(<?php echo $value['id']; ?>, true, <?php echo $value['favoriteId']; ?>);
-                                                            return false;" class="btn btn-dark btn-xs favoriteBtn favoriteBtn<?php echo $value['id']; ?>" title="<?php echo __("Favorite"); ?>" style="<?php echo $favoriteBtnStyle; ?>" ><i class="fas fa-heart" ></i></button>    
+                                                                return false;" class="btn btn-dark btn-xs favoriteBtn favoriteBtn<?php echo $value['id']; ?>" title="<?php echo __("Favorite"); ?>" style="<?php echo $favoriteBtnStyle; ?>" ><i class="fas fa-heart" ></i></button>    
 
                                     </div>
                                     <?php
@@ -401,165 +415,182 @@
 
                 <?php
             }
+            if(PlayLists::showTVFeatures()){
             ?>
-
+            <div class="panel-footer">
+                <?php 
+                $_REQUEST['user_id'] = $user_id;
+                $_REQUEST['playlists_id'] = $playlist['id'];
+                include $global['systemRootPath'] . 'plugin/PlayLists/epg.html.php';
+                ?>
+            </div>
+            <?php
+            }
+            ?>
         </div>
-        <?php
-    }
-    if (!empty($videosP) && empty($countSuccess)) {
-        header("Location: {$global['webSiteRootURL']}view/channelPlaylistItems.php?current=" . (count($playlists) ? $_POST['current'] + 1 : $_POST['current']) . "&channelName={$_GET['channelName']}");
-        exit;
-    }
-    TimeLogEnd($timeLog2, __LINE__);
-    $_GET['channelName'] = $channelName;
-    ?>
+    <?php
+}
+if (!empty($videosP) && empty($countSuccess)) {
+    header("Location: {$global['webSiteRootURL']}view/channelPlaylistItems.php?current=" . (count($playlists) ? $_POST['current'] + 1 : $_POST['current']) . "&channelName={$_GET['channelName']}");
+    exit;
+}
+TimeLogEnd($timeLog2, __LINE__);
+$_GET['channelName'] = $channelName;
+?>
     <script>
 
         $(function () {
-        $('.removeVideo').click(function () {
-        currentObject = this;
-        swal({
-        title: "<?php echo __("Are you sure?"); ?>",
-                text: "<?php echo __("You will not be able to recover this action!"); ?>",
-                icon: "warning",
-                buttons: true,
-                dangerMode: true,
-        })
-                .then((willDelete) => {
-                if (willDelete) {
+            $('.removeVideo').click(function () {
+                currentObject = this;
+                swal({
+                    title: "<?php echo __("Are you sure?"); ?>",
+                    text: "<?php echo __("You will not be able to recover this action!"); ?>",
+                    icon: "warning",
+                    buttons: true,
+                    dangerMode: true,
+                })
+                        .then(function (willDelete) {
+                            if (willDelete) {
 
-                modal.showPleaseWait();
-                var playlist_id = $(currentObject).attr('playlist_id');
-                var video_id = $(currentObject).attr('video_id');
-                $.ajax({
-                url: '<?php echo $global['webSiteRootURL']; ?>objects/playlistRemoveVideo.php',
-                        data: {
-                        "playlist_id": playlist_id,
-                                "video_id": video_id
-                        },
-                        type: 'post',
-                        success: function (response) {
-                        reloadPlayLists();
-                        $(".playListsIds" + video_id).prop("checked", false);
-                        $(currentObject).closest('.galleryVideo').fadeOut();
-                        modal.hidePleaseWait();
-                        }
-                });
+                                modal.showPleaseWait();
+                                var playlist_id = $(currentObject).attr('playlist_id');
+                                var video_id = $(currentObject).attr('video_id');
+                                $.ajax({
+                                    url: '<?php echo $global['webSiteRootURL']; ?>objects/playlistRemoveVideo.php',
+                                    data: {
+                                        "playlist_id": playlist_id,
+                                        "video_id": video_id
+                                    },
+                                    type: 'post',
+                                    success: function (response) {
+                                        reloadPlayLists();
+                                        $(".playListsIds" + video_id).prop("checked", false);
+                                        $(currentObject).closest('.galleryVideo').fadeOut();
+                                        modal.hidePleaseWait();
+                                    }
+                                });
+                            }
+                        });
+            });
+            $('.deletePlaylist').click(function () {
+                currentObject = this;
+                swal({
+                    title: "<?php echo __("Are you sure?"); ?>",
+                    text: "<?php echo __("You will not be able to recover this action!"); ?>",
+                    icon: "warning",
+                    buttons: true,
+                    dangerMode: true,
+                })
+                        .then(function (willDelete) {
+                            if (willDelete) {
+
+                                modal.showPleaseWait();
+                                var playlist_id = $(currentObject).attr('playlist_id');
+                                console.log(playlist_id);
+                                $.ajax({
+                                    url: '<?php echo $global['webSiteRootURL']; ?>objects/playlistRemove.php',
+                                    data: {
+                                        "playlist_id": playlist_id
+                                    },
+                                    type: 'post',
+                                    success: function (response) {
+                                        $(currentObject).closest('.panel').slideUp();
+                                        modal.hidePleaseWait();
+                                    }
+                                });
+                            }
+                        });
+            });
+            $('.statusPlaylist').click(function () {
+                var playlist_id = $(this).attr('playlist_id');
+                var status = "public";
+                if ($('#statusPrivate' + playlist_id).is(":visible")) {
+                    status = "public";
+                    $('.statusPlaylist' + playlist_id + ' span').hide();
+                    $('#statusPublic' + playlist_id).fadeIn();
+                } else if ($('#statusPublic' + playlist_id).is(":visible")) {
+                    status = "unlisted";
+                    $('.statusPlaylist' + playlist_id + ' span').hide();
+                    $('#statusUnlisted' + playlist_id).fadeIn();
+                } else if ($('#statusUnlisted' + playlist_id).is(":visible")) {
+                    status = "private";
+                    $('.statusPlaylist' + playlist_id + ' span').hide();
+                    $('#statusPrivate' + playlist_id).fadeIn();
                 }
-                });
-        });
-        $('.deletePlaylist').click(function () {
-        currentObject = this;
-        swal({
-        title: "<?php echo __("Are you sure?"); ?>",
-                text: "<?php echo __("You will not be able to recover this action!"); ?>",
-                icon: "warning",
-                buttons: true,
-                dangerMode: true,
-        })
-                .then((willDelete) => {
-                if (willDelete) {
-
                 modal.showPleaseWait();
-                var playlist_id = $(currentObject).attr('playlist_id');
                 console.log(playlist_id);
                 $.ajax({
-                url: '<?php echo $global['webSiteRootURL']; ?>objects/playlistRemove.php',
-                        data: {
-                        "playlist_id": playlist_id
-                        },
-                        type: 'post',
-                        success: function (response) {
-                        $(currentObject).closest('.panel').slideUp();
-                        modal.hidePleaseWait();
-                        }
-                });
-                }
-                });
-        });
-        $('.statusPlaylist').click(function () {
-        var playlist_id = $(this).attr('playlist_id');
-        var status = "public";
-        if ($('#statusPrivate' + playlist_id).is(":visible")) {
-        status = "public";
-        $('.statusPlaylist' + playlist_id + ' span').hide();
-        $('#statusPublic' + playlist_id).fadeIn();
-        } else if ($('#statusPublic' + playlist_id).is(":visible")) {
-        status = "unlisted";
-        $('.statusPlaylist' + playlist_id + ' span').hide();
-        $('#statusUnlisted' + playlist_id).fadeIn();
-        } else if ($('#statusUnlisted' + playlist_id).is(":visible")) {
-        status = "private";
-        $('.statusPlaylist' + playlist_id + ' span').hide();
-        $('#statusPrivate' + playlist_id).fadeIn();
-        }
-        modal.showPleaseWait();
-        console.log(playlist_id);
-        $.ajax({
-        url: '<?php echo $global['webSiteRootURL']; ?>objects/playlistStatus.php',
-                data: {
-                "playlist_id": playlist_id,
+                    url: '<?php echo $global['webSiteRootURL']; ?>objects/playlistStatus.php',
+                    data: {
+                        "playlist_id": playlist_id,
                         "status": status
-                },
-                type: 'post',
-                success: function (response) {
+                    },
+                    type: 'post',
+                    success: function (response) {
 
-                modal.hidePleaseWait();
+                        modal.hidePleaseWait();
+                    }
+                });
+            });
+            $('.renamePlaylist').click(function () {
+                currentObject = this;
+                swal({
+                    text: "<?php echo __("Change Playlist Name"); ?>!",
+                    content: "input",
+                    button: {
+                        text: "<?php echo __("Confirm Playlist name"); ?>",
+                        closeModal: false,
+                    },
+                }).then(function (name) {
+                    if (!name)
+                        throw null;
+                    modal.showPleaseWait();
+                    var playlist_id = $(currentObject).attr('playlist_id');
+                    console.log(playlist_id);
+                    return fetch('<?php echo $global['webSiteRootURL']; ?>objects/playlistRename.php?playlist_id=' + playlist_id + '&name=' + encodeURI(name));
+                }).then(function (results) {
+                    return results.json();
+                }).then(function (response) {
+                    if (response.error) {
+                        avideoAlert("<?php echo __("Sorry!"); ?>", response.msg, "error");
+                        modal.hidePleaseWait();
+                    } else {
+                        $(currentObject).closest('.panel').find('.playlistName').text(response.name);
+                        swal.stopLoading();
+                        swal.close();
+                        modal.hidePleaseWait();
+                    }
+                }).catch(function (err) {
+                    if (err) {
+                        swal("Oh noes!", "The AJAX request failed!", "error");
+                    } else {
+                        swal.stopLoading();
+                        swal.close();
+                    }
+                    modal.hidePleaseWait();
+                });
+            });
+            $('.sortNow').click(function () {
+                var $val = $(this).siblings("input").val();
+                sortNow(this, $val);
+            });
+            $('.video_order').keypress(function (e) {
+                if (e.which == 13) {
+                    sortNow(this, $(this).val());
                 }
-        });
-        });
-        $('.renamePlaylist').click(function () {
-        currentObject = this;
-        swal({
-        title: "<?php echo __("Change Playlist Name"); ?>!",
-                text: "<?php echo __("What is the new name?"); ?>",
-                content: "input",
-                showCancelButton: true,
-                closeOnConfirm: true,
-                inputPlaceholder: "<?php echo __("Playlist name?"); ?>"
-        }).then(inputValue = > {
-
-        if (!inputValue || inputValue === false || inputValue === "")
-                return false;
-        modal.showPleaseWait();
-        var playlist_id = $(currentObject).attr('playlist_id');
-        console.log(playlist_id);
-        $.ajax({
-        url: '<?php echo $global['webSiteRootURL']; ?>objects/playlistRename.php',
-                data: {
-                "playlist_id": playlist_id,
-                        "name": inputValue
-                },
-                type: 'post',
-                success: function (response) {
-                $(currentObject).closest('.panel').find('.playlistName').text(inputValue);
-                modal.hidePleaseWait();
-                }
-        });
-        return false;
-        });
-        });
-        $('.sortNow').click(function () {
-        var $val = $(this).siblings("input").val();
-        sortNow(this, $val);
-        });
-        $('.video_order').keypress(function (e) {
-        if (e.which == 13) {
-        sortNow(this, $(this).val());
-        }
-        });
+            });
         });
     </script>
     <!--
     channelPlaylist
-    <?php
-    $timesC[__LINE__] = microtime(true) - $startC;
-    $startC = microtime(true);
-    foreach ($timesC as $key => $value) {
-        echo "Line: {$key} -> {$value}\n";
-    }
-    $_POST['current'] = $current;
-    ?>
+<?php
+$timesC[__LINE__] = microtime(true) - $startC;
+$startC = microtime(true);
+foreach ($timesC as $key => $value) {
+    echo "Line: {$key} -> {$value}\n";
+}
+$_POST['current'] = $current;
+?>
     -->
 </div>
 <p class="pagination">

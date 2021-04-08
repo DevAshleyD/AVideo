@@ -211,45 +211,45 @@ class Configuration {
         }
         return $this->logo . $get;
     }
-    
+
     static function _getFavicon($getPNG = false) {
         global $global;
         $file = false;
         $url = false;
         if (!$getPNG) {
             $file = $global['systemRootPath'] . "videos/favicon.ico";
-            $url = "{$global['webSiteRootURL']}videos/favicon.ico";
+            $url = getCDN()."videos/favicon.ico";
             if (!file_exists($file)) {
                 $file = $global['systemRootPath'] . "view/img/favicon.ico";
-                $url = "{$global['webSiteRootURL']}view/img/favicon.ico";
+                $url = getCDN()."view/img/favicon.ico";
             }
         }
         if (empty($url) || !file_exists($file)) {
             $file = $global['systemRootPath'] . "videos/favicon.png";
-            $url = "{$global['webSiteRootURL']}videos/favicon.png";
+            $url = getCDN()."videos/favicon.png";
             if (!file_exists($file)) {
                 $file = $global['systemRootPath'] . "view/img/favicon.png";
-                $url = "{$global['webSiteRootURL']}view/img/favicon.png";
+                $url = getCDN()."view/img/favicon.png";
             }
         }
-        return array('file'=>$file, 'url'=>$url);
+        return array('file' => $file, 'url' => $url);
     }
 
     function getFavicon($getPNG = false, $getTime = true) {
         $return = self::_getFavicon($getPNG);
-        if($getTime){
-            return $return['url'] . "?" . filectime($return['file']);
-        }else{
+        if ($getTime) {
+            return $return['url'] . "?" . filemtime($return['file']);
+        } else {
             return $return['url'];
         }
     }
-    
-    static function getOGImage(){
+
+    static function getOGImage() {
         global $global;
-        $destination = "{$global['systemRootPath']}videos/cache/og_200X200.jpg";
+        $destination = Video::getStoragePath()."cache/og_200X200.jpg";
         $return = self::_getFavicon(true);
         convertImageToOG($return['file'], $destination);
-        return $global['webSiteRootURL']."videos/cache/og_200X200.jpg";
+        return getCDN() . "videos/cache/og_200X200.jpg";
     }
 
     function setHead($head) {
@@ -341,7 +341,7 @@ class Configuration {
         if (empty($global['disableTimeFix'])) {
             $global['disableTimeFix'] = 0;
         }
-        if(empty($global['logfile'])){
+        if (empty($global['logfile'])) {
             $global['logfile'] = $global['systemRootPath'] . 'videos/avideo.log';
         }
         $content = "<?php
@@ -350,7 +350,7 @@ class Configuration {
 \$global['videoStorageLimitMinutes'] = {$global['videoStorageLimitMinutes']};
 \$global['disableTimeFix'] = {$global['disableTimeFix']};
 \$global['logfile'] = '{$global['logfile']}';
-if(!empty(\$_SERVER['SERVER_NAME']) && \$_SERVER['SERVER_NAME']!=='localhost' && !filter_var(\$_SERVER['SERVER_NAME'], FILTER_VALIDATE_IP)) { 
+if(!empty(\$_SERVER['SERVER_NAME']) && \$_SERVER['SERVER_NAME']!=='localhost' && !filter_var(\$_SERVER['SERVER_NAME'], FILTER_VALIDATE_IP)) {
     // get the subdirectory, if exists
     \$file = str_replace(\"\\\\\", \"/\", __FILE__);
     \$subDir = str_replace(array(\$_SERVER[\"DOCUMENT_ROOT\"], 'videos/configuration.php'), array('',''), \$file);
@@ -461,39 +461,82 @@ require_once \$global['systemRootPath'].'objects/include_config.php';
     }
 
     function _getEncoderURL() {
+        if (substr($this->encoderURL, -1) !== '/') {
+            $this->encoderURL .= "/";
+        }
         return $this->encoderURL;
     }
-
-    function getEncoderURL() {
-        $encoder = ObjectYPT::getCache("getEncoderURL", 60);
-        if(empty($encoder)){
-            global $advancedCustom;
-            if (!empty($advancedCustom->useEncoderNetworkRecomendation) && !empty($advancedCustom->encoderNetwork)) {
-                if (substr($advancedCustom->encoderNetwork, -1) !== '/') {
-                    $advancedCustom->encoderNetwork .= "/";
-                }
-                $bestEncoder = json_decode(url_get_contents($advancedCustom->encoderNetwork . "view/getBestEncoder.php", "", 10));
-                if (!empty($bestEncoder->siteURL)) {
-                    $this->encoderURL = $bestEncoder->siteURL;
-                }else{
-                    error_log("Configuration::getEncoderURL ERROR your network ($advancedCustom->encoderNetwork) is not configured properly This slow down your site a lot, disable the option useEncoderNetworkRecomendation in your CustomizeAdvanced plugin");
-                }
+    
+    function shouldUseEncodernetwork(){
+        global $advancedCustom, $global;
+        if(empty($advancedCustom->useEncoderNetworkRecomendation) || empty($advancedCustom->encoderNetwork)){
+           return false; 
+        }
+        if($advancedCustom->encoderNetwork === 'https://network.avideo.com/'){   
+            // check if you have your own encoder
+            $encoderConfigFile = "{$global['systemRootPath']}Encoder/videos/configuration.php";
+            if(file_exists($encoderConfigFile)){ // you have an encoder do not use the public one
+                _error_log("Configuration:shouldUseEncodernetwork 1 You checked the Encoder Network but you have your own encoder, we will ignore this option");
+                return false;
             }
-
-            if (empty($this->encoderURL)) {
-                $encoder = "https://encoder1.avideo.com/";
-            }
+            
             if (substr($this->encoderURL, -1) !== '/') {
                 $this->encoderURL .= "/";
             }
-            $encoder = $this->encoderURL;
-            ObjectYPT::setCache("getEncoderURL", $encoder);
+            
+            if(!preg_match('/encoder[1-9].avideo.com/i', $this->encoderURL)){
+                $creatingImages = "{$this->encoderURL}view/img/creatingImages.jpg";
+                if(isURL200($creatingImages)){
+                    _error_log("Configuration:shouldUseEncodernetwork 2 You checked the Encoder Network but you have your own encoder, we will ignore this option");
+                    return false;
+                }
+            }
         }
-        return $encoder;
+        return true;
+    }
+
+    function getEncoderURL() {
+        global $global, $getEncoderURL, $advancedCustom;
+        if(!empty($global['forceEncoderURL'])){
+            return $global['forceEncoderURL'];
+        }
+        if (empty($getEncoderURL)) {
+            $getEncoderURL = ObjectYPT::getCache("getEncoderURL", 60);
+            if (empty($getEncoderURL)) {
+                if ($this->shouldUseEncodernetwork()) {
+                    if (substr($advancedCustom->encoderNetwork, -1) !== '/') {
+                        $advancedCustom->encoderNetwork .= "/";
+                    }
+                    $bestEncoder = json_decode(url_get_contents($advancedCustom->encoderNetwork . "view/getBestEncoder.php", "", 10));
+                    if (!empty($bestEncoder->siteURL)) {
+                        $this->encoderURL = $bestEncoder->siteURL;
+                    } else {
+                        error_log("Configuration::getEncoderURL ERROR your network ($advancedCustom->encoderNetwork) is not configured properly This slow down your site a lot, disable the option useEncoderNetworkRecomendation in your CustomizeAdvanced plugin");
+                    }
+                }
+
+                if (empty($this->encoderURL)) {
+                    $getEncoderURL = "https://encoder1.avideo.com/";
+                }
+                if (substr($this->encoderURL, -1) !== '/') {
+                    $this->encoderURL .= "/";
+                }
+                $getEncoderURL = $this->encoderURL;
+                ObjectYPT::setCache("getEncoderURL", $getEncoderURL);
+            }
+        }
+        return $getEncoderURL;
     }
 
     function setEncoderURL($encoderURL) {
         $this->encoderURL = $encoderURL;
+    }
+
+    function getPageTitleSeparator() {
+        if(!defined('PAGE_TITLE_SEPARATOR')){
+            define("PAGE_TITLE_SEPARATOR", "&middot;"); // This is ready to be configurable, if needed
+        }
+        return " " . PAGE_TITLE_SEPARATOR . " ";
     }
 
 }

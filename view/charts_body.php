@@ -1,3 +1,4 @@
+
 <div class="list-group-item clear clearfix">
     <ul class="nav nav-tabs">
         <li class="active"><a data-toggle="tab" href="#dashboard"><i class="fas fa-tachometer-alt"></i> <?php echo __("Dashboard"); ?></a></li>
@@ -10,6 +11,7 @@
     <div class="tab-content">
         <div id="dashboard" class="tab-pane fade in active" style="padding: 10px;">
             <?php
+            echo diskUsageBars();
             include $global['systemRootPath'] . 'view/report0.php';
             ?>
         </div>
@@ -31,7 +33,7 @@
         <?php echo AVideoPlugin::getChartContent(); ?>
     </div>
 </div>
-<script type="text/javascript" src="<?php echo $global['webSiteRootURL']; ?>view/css/DataTables/datatables.min.js"></script>
+<script type="text/javascript" src="<?php echo getCDN(); ?>view/css/DataTables/datatables.min.js"></script>
 <?php
 include_once $global['systemRootPath'] . 'view/include/footer.php';
 ?>

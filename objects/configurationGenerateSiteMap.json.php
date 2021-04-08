@@ -13,21 +13,20 @@ $obj = new stdClass();
 $obj->error = true;
 $obj->msg = "";
 
-if (!User::isAdmin()) {
+if (!Permissions::canGenerateSiteMap()) {
     $obj->msg = __("Permission denied");
     die(json_encode($obj));
 }
 $sitemap = siteMap();
 
 if(empty($sitemap)){
-    $obj->msg = "Sitemao content is empty";
+    $obj->msg = "Sitemap content is empty";
     die(json_encode($obj));
 }
 
-if(!file_put_contents($sitemapFile, $sitemap)){
-    $obj->msg = "We could not save the sitemap";
-    die(json_encode($obj));
-}
+
+$name = "sitemap.xml";
+ObjectYPT::setCache($name, $sitemap);
 
 $obj->error = false;
 die(json_encode($obj));

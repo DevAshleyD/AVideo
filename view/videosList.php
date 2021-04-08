@@ -5,7 +5,7 @@ if (!isset($global['systemRootPath'])) {
 }
 require_once $global['systemRootPath'] . 'objects/user.php';
 require_once $global['systemRootPath'] . 'objects/functions.php';
-if(isBot()){
+if (isBot()) {
     return;
 }
 
@@ -36,8 +36,8 @@ if (empty($_REQUEST['rowCount'])) {
     }
 }
 
-if($_REQUEST['rowCount']<=0 || $_REQUEST['rowCount']>100){
-    $_REQUEST['rowCount']=10;
+if ($_REQUEST['rowCount'] <= 0 || $_REQUEST['rowCount'] > 100) {
+    $_REQUEST['rowCount'] = 10;
 }
 
 if (empty($_POST['sort'])) {
@@ -71,7 +71,7 @@ if (!empty($_GET['channelName']) && empty($advancedCustomUser->hideRemoveChannel
     $user = User::getChannelOwner($_GET['channelName']);
     //var_dump($user);exit;
     ?>
-    <div class="col-md-12" >
+    <div class="col-md-12" style="padding: 15px; margin: 5px 0; background-image: url(<?php echo $global['webSiteRootURL'], User::getBackgroundURLFromUserID($user['id']); ?>); background-size: cover;"  >
         <img src="<?php echo User::getPhoto($user['id']); ?>" class="img img-responsive img-circle" style="max-width: 60px;" alt="User Photo"/>
         <div style="position: absolute; right: 5px; top: 5px;">
             <button class="btn btn-default btn-xs btn-sm" onclick="loadPage(<?php echo $_GET['page']; ?>, true);"><?php echo User::getNameIdentificationById($user['id']); ?> <i class="fa fa-times"></i></button>
@@ -104,14 +104,14 @@ if (empty($video['id'])) {
         <?php
         $jsonArray = json_decode($advancedCustom->videosListRowCount);
         foreach ($jsonArray as $item) {
-            if($item==-1){
-            ?>
-            <option <?php echo (!empty($_REQUEST['rowCount']) && $_REQUEST['rowCount'] == $item) ? "selected='selected'" : "" ?>><?php echo __("All"); ?></option>
-            <?php
-            }else{
-            ?>
-            <option <?php echo (!empty($_REQUEST['rowCount']) && $_REQUEST['rowCount'] == $item) ? "selected='selected'" : "" ?>><?php echo $item; ?></option>
-            <?php
+            if ($item == -1) {
+                ?>
+                <option <?php echo (!empty($_REQUEST['rowCount']) && $_REQUEST['rowCount'] == $item) ? "selected='selected'" : "" ?>><?php echo __("All"); ?></option>
+                <?php
+            } else {
+                ?>
+                <option <?php echo (!empty($_REQUEST['rowCount']) && $_REQUEST['rowCount'] == $item) ? "selected='selected'" : "" ?>><?php echo $item; ?></option>
+                <?php
             }
         }
         ?>
@@ -127,9 +127,9 @@ foreach ($videos as $key => $value) {
     $name = User::getNameIdentificationById($value['users_id']) . ' ' . User::getEmailVerifiedIcon($value['users_id']);
     $value['creator'] = '<div class="pull-left">'
             . '<a href="' . User::getChannelLink($value['users_id']) . '"><img src="' . User::getPhoto($value['users_id']) . '" alt="User Photo" class="img img-responsive img-circle zoom" style="max-width: 20px;"/></div><div class="commentDetails" style="margin-left:25px;"><div class="commenterName text-muted"><strong>' . $name . '</strong> <small>'
-            . '</a>' . humanTiming(strtotime($value['videoCreation'])) . '</small></div></div>';
+            . '</a>' . humanTimingAgo(strtotime($value['videoCreation'])) . '</small></div></div>';
     ?>
-    <div class="col-lg-12 col-sm-12 col-xs-12 bottom-border" id="divVideo-<?php echo $value['id']; ?>" >
+    <div class="col-lg-12 col-sm-12 col-xs-12 bottom-border videoListItem" id="divVideo-<?php echo $value['id']; ?>" >
         <?php
         $link = Video::getLink($value['id'], $value['clean_title'], "", $get);
         $connection = "?";
@@ -147,9 +147,9 @@ foreach ($videos as $key => $value) {
             if (!is_object($images)) {
                 $images = new stdClass();
                 $images->thumbsGif = "";
-                $images->poster = "{$global['webSiteRootURL']}view/img/notfound.jpg";
-                $images->thumbsJpg = "{$global['webSiteRootURL']}view/img/notfoundThumbs.jpg";
-                $images->thumbsJpgSmall = "{$global['webSiteRootURL']}view/img/notfoundThumbsSmall.jpg";
+                $images->poster = "".getCDN()."view/img/notfound.jpg";
+                $images->thumbsJpg = "".getCDN()."view/img/notfoundThumbs.jpg";
+                $images->thumbsJpgSmall = "".getCDN()."view/img/notfoundThumbsSmall.jpg";
             }
 
             $imgGif = $images->thumbsGif;
@@ -171,16 +171,16 @@ foreach ($videos as $key => $value) {
                     <?php
                     if (!empty($imgGif)) {
                         ?>
-                        <img src="<?php echo $global['webSiteRootURL']; ?>view/img/loading-gif.png" data-src="<?php echo $imgGif; ?>" style="position: absolute; top: 0; display: none;" alt="<?php echo $value['title']; ?>" id="thumbsGIF<?php echo $value['id']; ?>" class="thumbsGIF img-responsive <?php echo $img_portrait; ?>  rotate<?php echo $value['rotation']; ?>" height="130" />
+                        <img src="<?php echo getCDN(); ?>view/img/loading-gif.png" data-src="<?php echo $imgGif; ?>" style="position: absolute; top: 0; display: none;" alt="<?php echo $value['title']; ?>" id="thumbsGIF<?php echo $value['id']; ?>" class="thumbsGIF img-responsive <?php echo $img_portrait; ?>  rotate<?php echo $value['rotation']; ?>" height="130" />
                     <?php } ?>
 
                 </a>
-                <span itemprop="thumbnailUrl" content="<?php echo $img; ?>" ></span>
-                <span itemprop="uploadDate" content="<?php echo $value['created']; ?>"></span>
+                <span content="<?php echo $img; ?>" ></span>
+                <span content="<?php echo $value['created']; ?>"></span>
                 <?php
                 if (isToShowDuration($value['type'])) {
                     ?>
-                    <time class="duration" itemprop="duration" datetime="<?php echo Video::getItemPropDuration($value['duration']); ?>"><?php echo Video::getCleanDuration($value['duration']); ?></time>
+                    <time class="duration" datetime="<?php echo Video::getItemPropDuration($value['duration']); ?>"><?php echo Video::getCleanDuration($value['duration']); ?></time>
                     <?php
                 }
                 if (User::isLogged() && !empty($program)) {
@@ -222,10 +222,10 @@ foreach ($videos as $key => $value) {
         <div class="col-lg-7 col-sm-7 col-xs-7 videosDetails" style="font-size: 0.75em;">
 
             <a href="<?php echo $link; ?>" title="<?php echo $value['title']; ?>">
-                <div class="text-uppercase row"><strong itemprop="name" class="title"><?php echo $value['title']; ?></strong></div>
+                <div class="text-uppercase row"><strong class="title"><?php echo $value['title']; ?></strong></div>
             </a>
-            <div class="details row" itemprop="description">
-                <div class="col-sm-6 nopadding">
+            <div class="details row">
+                <div class="pull-left" style="display: inline-table;">
                     <a class="label label-default" href="<?php echo $global['webSiteRootURL']; ?>cat/<?php echo $value['clean_category']; ?>">
                         <span class="<?php echo $value['iconClass']; ?>"></span>
                         <span class="hidden-sm"><?php echo $value['category']; ?></span>
@@ -248,14 +248,22 @@ foreach ($videos as $key => $value) {
                     }
                     ?>
                 </div>
+
                 <?php
                 if (empty($advancedCustom->doNotDisplayViews)) {
-                    ?>
-                    <div class="col-sm-6 nopadding">
-                        <strong class="view-count<?php echo $value['id']; ?>"> <i class="fas fa-eye"></i> <?php echo number_format($value['views_count'], 0); ?></strong>
-                    </div>
-                <?php } ?>
-                <div class="col-sm-12 nopadding"  style="margin-top: 5px !important;"><?php echo $value['creator']; ?></div>
+                    if (AVideoPlugin::isEnabledByName('LiveUsers')) {
+                        echo '<div class="text-muted pull-right" style="display:flex;font-size: 1.2em;">'.getLiveUsersLabelVideo($value['id'], $value['views_count']).'</div>';
+                    } else {
+                        ?>
+                        <div class="text-muted pull-right">
+                            <i class="fas fa-eye"></i> <?php echo number_format($value['views_count'], 0); ?></strong>
+                        </div>
+                        <?php
+                    }
+                }
+                ?>
+                <div class="clearfix"></div>
+                <div class="nopadding"  style="margin-top: 5px !important;"><?php echo $value['creator']; ?></div>
 
 
             </div>
@@ -384,5 +392,5 @@ if (!empty($videoName) && !empty($video['id'])) {
                             });
 </script>
 <?php
-include $global['systemRootPath'] . 'objects/include_end.php';
+//include $global['systemRootPath'] . 'objects/include_end.php';
 ?>

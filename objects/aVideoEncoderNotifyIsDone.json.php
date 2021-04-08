@@ -34,23 +34,28 @@ if(!Video::canEdit($_POST['videos_id'])){
     _error_log($obj->msg);
     die(json_encode($obj));
 }
-
+Video::clearCache($_POST['videos_id']);
 // check if there is en video id if yes update if is not create a new one
 $video = new Video("", "", $_POST['videos_id']);
 $obj->video_id = $_POST['videos_id'];
 
 if(empty($_POST['fail'])){
-    $status = $video->getStatus();
-    // if status is not unlisted
-    if($status!=='u' && $status !== 'a'){
-        if(empty($advancedCustom->makeVideosInactiveAfterEncode)){
-            // set active
-            $video->setStatus('a');
-        }else if(empty($advancedCustom->makeVideosUnlistedAfterEncode)){
-            // set active
-            $video->setStatus('u');
-        }else{
-            $video->setStatus('i');
+    // if encoder requested a status
+    if (!empty($_POST['overrideStatus'])) {
+        $video->setStatus($_POST['overrideStatus']);
+    } else { // encoder did not provide a status
+        $status = $video->getStatus();
+        // if status is not unlisted
+        if($status!=='u' && $status !== 'a'){
+            if(empty($advancedCustom->makeVideosInactiveAfterEncode)){
+                // set active
+                $video->setStatus('a');
+            }else if(empty($advancedCustom->makeVideosUnlistedAfterEncode)){
+                // set active
+                $video->setStatus('u');
+            }else{
+                $video->setStatus('i');
+            }
         }
     }
 }else{
@@ -64,11 +69,12 @@ $obj->error = false;
 $obj->video_id = $video_id;
 Video::updateFilesize($video_id);
 // delete original files if any
-$originalFilePath =  "{$global['systemRootPath']}videos/original_" . $video->getFilename();
+$originalFilePath =  Video::getStoragePath()."original_" . $video->getFilename();
 if(file_exists($originalFilePath)){
     unlink($originalFilePath);
 }
 _error_log("Video is done notified {$video_id}: " . $video->getTitle());
+Video::clearCache($video_id);
 die(json_encode($obj));
 
 /*

@@ -72,7 +72,7 @@ if (!User::isAdmin()) {
         </button>
     </div>
 </div>
-<script type="text/javascript" src="<?php echo $global['webSiteRootURL']; ?>view/css/DataTables/datatables.min.js"></script>
+<script type="text/javascript" src="<?php echo getCDN(); ?>view/css/DataTables/datatables.min.js"></script>
 
 <script type="text/javascript">
     $(document).ready(function () {
@@ -103,7 +103,7 @@ if (!User::isAdmin()) {
                 buttons: true,
                 dangerMode: true,
             })
-            .then((willDelete) => {
+            .then(function(willDelete) {
               if (willDelete) {
 
                         modal.showPleaseWait();
